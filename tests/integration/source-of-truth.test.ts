@@ -8,6 +8,22 @@ import { contract, projectRoot } from "../support/contract";
 const layers = ["domain", "application", "infrastructure", "presentation"] as const;
 const productionRoots = layers.map((layer) => resolve(projectRoot, layer));
 const assetsRoot = resolve(projectRoot, "infrastructure/assets");
+// These are fail-closed assertions against the one canonical contract, not
+// alternate wire definitions. The standard values remain defined only in the
+// typed infrastructure owner; the model/provider guards reject drift if a
+// future call site bypasses normal contract composition.
+const contractEnforcementCopies = new Map<string, Set<string>>([
+  ["domain/models/manifest.go", new Set(["/healthz"])],
+  [
+    "presentation/observability.go",
+    new Set([
+      "/healthz",
+      "/metrics",
+      "application/json",
+      "text/plain; version=0.0.4; charset=utf-8",
+    ]),
+  ],
+]);
 
 function goFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -102,7 +118,7 @@ describe("typed definitions own constants and JSON assets publish them", () => {
     for (const { path, source } of productionSources()) {
       if (path === "infrastructure/contract_definitions.go") continue;
       for (const value of contractValues) {
-        if (source.includes(value)) {
+        if (source.includes(value) && !contractEnforcementCopies.get(path)?.has(value)) {
           offenders.push(`${path} repeats ${value}`);
         }
       }

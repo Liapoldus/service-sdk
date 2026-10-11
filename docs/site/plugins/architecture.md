@@ -65,7 +65,8 @@ development profile реализован как явный вызов `infrastru
 по умолчанию SDK его не создаёт. Listener принимает только TCP и только literal
 loopback IP (`127.0.0.0/8` либо `::1`); hostname, wildcard и remote bind отвергаются
 до прослушивания. SDK сам создаёт handler и публикует на нём только
-`GET /_liapoldus/v1/health`. Любой иной path или method получает общий `404` без
+`GET /healthz`. Основной SDK REST surface также содержит универсальный
+`GET /metrics`; оба endpoint реализованы SDK, а не product plugin. Любой иной path или method получает общий `404` без
 identity/configuration metadata. `/ready`, identity, Manifest, schema, Reload,
 metrics, admin actions и artifact stream остаются только на mTLS listener.
 Config pull и secret grants остаются только на mTLS Core endpoints и их clients;

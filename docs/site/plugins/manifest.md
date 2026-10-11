@@ -24,6 +24,38 @@ enum, строит runtime-конфигурацию и напрямую вызы
 peer-границе при вызове; v1 не вводит `DispatchApply` или централизованный
 capability registry.
 
+## Typed manifest provider
+
+SDK предоставляет `models.ManifestDescriptor` и `presentation.NewManifestProvider`.
+Composition root plugin передаёт typed descriptor и plugin-owned JSON schema:
+
+```go
+metadata, err := presentation.NewManifestProvider(
+    models.ManifestDescriptor{ID: "echo", Version: "1.0.0", Capabilities: caps},
+    []byte(`{"type":"object"}`),
+)
+handlers, err := presentation.NewHandlerSet(presentation.HandlerConfiguration{
+    Contracts: contracts, Lifecycle: lifecycle, Readiness: readiness,
+    Registration: registration, Metadata: metadata, Metrics: metrics,
+    AdminSurface: adminSurface, AdminActions: adminActions,
+})
+```
+
+SDK сам добавляет `manifestVersion: studio-runtime/v1`, `sdkVersion`, default
+`pluginprotocol` version и стандартное `runtime.healthEndpoint: /healthz`;
+кастомный health path отвергается. SDK проверяет лимиты, canonicalizes JSON и
+публикует документы на своих REST endpoints. Canonical live response получает
+Core через свой SDK client. CLI и Studio не вызывают эти endpoints напрямую;
+они видят только Core-backed Management API responses.
+
+SDK также фиксирует универсальные observability routes: `GET /healthz` и
+`GET /metrics`. Их точные paths, methods, status/body, content types и
+Prometheus exposition принадлежат SDK contract; plugin composition root
+передаёт только lifecycle/readiness и SDK collector. SDK отвергает собственный
+health handler с другим путём, семантикой или форматом.
+Поэтому Server, forms-db, Echo и любой новый plugin имеют одинаковую health и
+metrics поверхность без product-specific копий.
+
 Wire schema и examples не копируются в эту документацию; каноническая модель
 описана в [целевой архитектуре Core](../core/architecture/target),
 [plugin deployment](../core/architecture/plugin-deployment) и

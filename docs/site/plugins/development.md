@@ -27,7 +27,7 @@ plaintext допустим только для TCP loopback в development; remo
 явно выбрать opt-in loopback-only plaintext profile вызовом
 `infrastructure.NewLoopbackHealthServer`; по умолчанию такой listener не
 создаётся. SDK принимает только literal loopback TCP bind и сам ограничивает
-маршрут `GET /_liapoldus/v1/health`. `/ready`, identity, Manifest, config schema,
+маршрут `GET /healthz`. `/ready`, identity, Manifest, config schema,
 Reload, metrics, admin actions и artifacts остаются mTLS-only. Exact config pull
 и secret-grant clients/endpoints всегда используют mTLS; config bytes и secret
 values никогда не выдаются через plaintext. TLS error не включает plaintext
@@ -35,6 +35,27 @@ fallback. Канонические значения profile находятся �
 [`loopback-plaintext-profile.json`](../../../infrastructure/assets/plugin-sdk/v2/loopback-plaintext-profile.json).
 Plugin только явно вызывает API SDK; собственную обработку TLS, сертификатов
 или plaintext transport он не реализует.
+
+### Обязательные observability endpoints
+
+Каждый production plugin обязан собираться через Plugin SDK `HandlerSet`.
+`GET /healthz` и `GET /metrics` являются универсальными SDK endpoints: SDK
+создаёт их сам из versioned contract и общего metrics collector. Product plugin
+не добавляет собственные health/metrics handlers, не меняет пути и не
+дублирует response shape. На Core control listener оба endpoint обслуживаются
+SDK REST surface с mTLS; отдельный operator-facing listener также монтирует
+только SDK `NewObservabilityHandler`, а не собственную реализацию.
+
+Control plane для Studio/runtime имеет единственный маршрут:
+
+```text
+Studio → CLI → Core Management API → Plugin SDK REST API
+```
+
+CLI запускает workload и объявляет Core безопасные replica metadata. Core сам
+читает live manifest, config schema, identity и readiness у plugin. Это
+исключает второй CLI→plugin lifecycle client и сохраняет SDK REST ownership у
+Core.
 
 Каждый plugin владеет собственным Manifest, settings schema, capabilities,
 ошибками, Admin Surface и product data. Settings сохраняются Core в SQLite и

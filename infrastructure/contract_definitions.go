@@ -36,10 +36,10 @@ func newHTTPContract() HTTPContract {
 		"adminSurface":   {Method: "GET", Path: "/_liapoldus/v1/admin-surface"},
 		"artifactStream": {Method: "POST", Path: "/_liapoldus/v1/artifact-stream"},
 		"configSchema":   {Method: "GET", Path: "/_liapoldus/v1/config-schema"},
-		"health":         {Method: "GET", Path: "/_liapoldus/v1/health"},
+		"health":         {Method: "GET", Path: "/healthz"},
 		"identity":       {Method: "GET", Path: "/_liapoldus/v1/identity"},
 		"manifest":       {Method: "GET", Path: "/_liapoldus/v1/manifest"},
-		"metrics":        {Method: "GET", Path: "/_liapoldus/v1/metrics"},
+		"metrics":        {Method: "GET", Path: "/metrics"},
 		"ready":          {Method: "GET", Path: "/_liapoldus/v1/ready"},
 		"reload":         {Method: "POST", Path: "/_liapoldus/v1/reload"},
 	}

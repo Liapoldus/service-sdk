@@ -1,6 +1,7 @@
 package infrastructure
 
 import (
+	"crypto/x509"
 	"errors"
 	"net/url"
 	"strings"
@@ -155,6 +156,47 @@ func (contract ReplicaLifecycleContract) ReplicaIdentityURI(identity models.Peer
 		return "", err
 	}
 	return replicaIdentityURI(contract, identity)
+}
+
+// ReplicaIdentityFromClientCertificate binds the runtime incarnation to the
+// one exact SDK lifecycle URI carried by the configured client certificate.
+// This lets operator-issued certificates define the replica incarnation; a
+// process must not invent a random incarnation that its certificate cannot
+// authenticate.
+func ReplicaIdentityFromClientCertificate(contract ReplicaLifecycleContract, certificate *x509.Certificate, instanceID, replicaID, placementID string) (models.PeerReplicaID, error) {
+	if contract.Validate() != nil || certificate == nil || len(certificate.URIs) != 1 ||
+		!models.ValidInstanceID(instanceID) || !models.ValidReplicaID(replicaID) || !models.ValidInstanceID(placementID) {
+		return models.PeerReplicaID{}, models.ErrReplicaIdentityMismatch
+	}
+	template := contract.Identity.URITemplate
+	if strings.Count(template, "{instanceId}") != 1 || strings.Count(template, "{replicaId}") != 1 ||
+		strings.Count(template, "{incarnationId}") != 1 || !strings.HasSuffix(template, "{incarnationId}") {
+		return models.PeerReplicaID{}, ErrInvalidReplicaLifecycleContract
+	}
+	prefix := strings.TrimSuffix(template, "{incarnationId}")
+	prefix = strings.ReplaceAll(prefix, "{instanceId}", url.PathEscape(instanceID))
+	prefix = strings.ReplaceAll(prefix, "{replicaId}", url.PathEscape(replicaID))
+	uri := certificate.URIs[0].String()
+	if !strings.HasPrefix(uri, prefix) {
+		return models.PeerReplicaID{}, models.ErrReplicaIdentityMismatch
+	}
+	escapedIncarnation := strings.TrimPrefix(uri, prefix)
+	if escapedIncarnation == "" || strings.Contains(escapedIncarnation, "/") {
+		return models.PeerReplicaID{}, models.ErrReplicaIdentityMismatch
+	}
+	incarnationID, err := url.PathUnescape(escapedIncarnation)
+	if err != nil {
+		return models.PeerReplicaID{}, models.ErrReplicaIdentityMismatch
+	}
+	identity := models.PeerReplicaID{
+		InstanceID: instanceID, ReplicaID: replicaID,
+		IncarnationID: incarnationID, PlacementID: placementID,
+	}
+	expectedURI, err := contract.ReplicaIdentityURI(identity)
+	if err != nil || expectedURI != uri {
+		return models.PeerReplicaID{}, models.ErrReplicaIdentityMismatch
+	}
+	return identity, nil
 }
 
 func (contract ReplicaLifecycleContract) endpointURL(base *url.URL, name string) (*url.URL, error) {

@@ -126,7 +126,13 @@ control URL отклоняются на handshake или на этапе кон�
 loopback-only plaintext profile для локальной разработки реализован как
 явный opt-in SDK API `infrastructure.NewLoopbackHealthServer`; по умолчанию
 listener не создаётся. SDK принимает только TCP bind с literal loopback IP и
-сам публикует на отдельном listener только generic `GET /_liapoldus/v1/health`.
+сам публикует на отдельном listener только generic `GET /healthz`.
+Основной SDK REST handler также всегда публикует универсальные `GET /healthz`
+и `GET /metrics`; маршруты, общий health response и exposition создаёт SDK из
+зафиксированного HTTP contract и SDK collector. Все product plugins используют
+этот `HandlerSet` и не реализуют, не заменяют и не дублируют endpoints. Публичный
+data-plane listener при необходимости подключает тот же SDK
+`NewObservabilityHandler` с тем же collector.
 Произвольный handler передать нельзя. `/ready` остаётся под mTLS, поскольку его
 ответ содержит identity replica и generation; остальные lifecycle, metadata,
 metrics, admin и artifact endpoints также доступны только через mTLS.

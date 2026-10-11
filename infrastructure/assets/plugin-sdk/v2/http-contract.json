@@ -73,7 +73,7 @@
       },
       "health": {
         "method": "GET",
-        "path": "/_liapoldus/v1/health"
+        "path": "/healthz"
       },
       "identity": {
         "method": "GET",
@@ -85,7 +85,7 @@
       },
       "metrics": {
         "method": "GET",
-        "path": "/_liapoldus/v1/metrics"
+        "path": "/metrics"
       },
       "ready": {
         "method": "GET",

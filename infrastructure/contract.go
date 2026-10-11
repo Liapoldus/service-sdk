@@ -409,6 +409,17 @@ func (contract HTTPContract) validate() error {
 	if err := validateArtifactInvocationContract(artifact.InvocationContext); err != nil {
 		return err
 	}
+	standard := newHTTPContract()
+	health, hasHealth := contract.Plugin.Endpoints["health"]
+	metrics, hasMetrics := contract.Plugin.Endpoints["metrics"]
+	standardHealth := standard.Plugin.Responses.Health
+	if !hasHealth || health != standard.Plugin.Endpoints["health"] ||
+		!hasMetrics || metrics != standard.Plugin.Endpoints["metrics"] ||
+		contract.Plugin.Responses.Health.Status != standardHealth.Status || len(contract.Plugin.Responses.Health.Body) != len(standardHealth.Body) ||
+		contract.Plugin.Responses.Health.Body["status"] != standardHealth.Body["status"] ||
+		contract.Plugin.Responses.ContentTypes != standard.Plugin.Responses.ContentTypes {
+		return fmt.Errorf("%w: universal SDK observability endpoints", ErrInvalidHTTPContract)
+	}
 	if err := validateAdminInvocationContract(contract.Plugin.AdminAction.InvocationContext); err != nil {
 		return err
 	}

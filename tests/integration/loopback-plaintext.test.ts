@@ -120,7 +120,7 @@ describe("the opt-in loopback plaintext health profile", () => {
     try {
       expect(fixture.info.enabled).toBe(true);
       expect(fixture.info.healthURL).toMatch(/^http:\/\/127\.0\.0\.1:/);
-      const good = await request(required(fixture.info.healthURL), "/_liapoldus/v1/health");
+      const good = await request(required(fixture.info.healthURL), "/healthz");
       expect(good.status).toBe(200);
       expect(JSON.parse(good.text)).toEqual({ status: "ok" });
 
@@ -133,7 +133,7 @@ describe("the opt-in loopback plaintext health profile", () => {
         ["/_liapoldus/v1/admin-surface", "GET"],
         ["/_liapoldus/v1/admin-action/forms/delete", "POST"],
         ["/_liapoldus/v1/artifact-stream", "POST"],
-        ["/_liapoldus/v1/metrics", "GET"],
+        ["/metrics", "GET"],
         ["/internal/v1/plugin-config/generation-active", "GET"],
         ["/internal/v1/plugin-secret-grants", "POST"],
         ["/internal/v1/plugin-secret-grants/handle/redemption", "POST"],

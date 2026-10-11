@@ -31,6 +31,12 @@ revision; edit the owner source, never a generated copy in the site aggregator.
 - The SDK owns generic Core↔plugin lifecycle only. It must not depend on Core,
   `pluginprotocol`, Caddy, or any product plugin. `pluginprotocol` owns generic
   plugin↔plugin communication only.
+- Every production product plugin composes its Core-facing REST surface with
+  `presentation.NewHandlerSet`. The SDK contract fixes the universal `GET
+  /healthz` and `GET /metrics` routes and response formats; plugin code must not
+  define, replace, rename or duplicate either handler. A product with a public
+  data-plane listener mounts `presentation.NewObservabilityHandler` from the
+  same SDK contract and collector instead of implementing another copy.
 - Product configuration remains an opaque JSON object to the SDK. Preserve the
   exact bytes returned by Core, verify generation/schema-version/digest, reject
   duplicate JSON object keys, and call the plugin-owned validator/applier before
@@ -51,7 +57,7 @@ revision; edit the owner source, never a generated copy in the site aggregator.
   supported SDK security profile and never implement transport security
   themselves. The versioned, opt-in loopback plaintext development profile is
   separate from the production v1 HTTP contract, disabled by default, and
-  exposes only the generic `GET /_liapoldus/v1/health` response on its own
+  exposes only the generic `GET /healthz` response on its own
   literal-loopback TCP listener. It accepts no caller-provided handler; every
   other route, including `/ready`, is unavailable there. Exact config pull and
   secret-grant endpoints/clients always require mTLS and must never be reachable
