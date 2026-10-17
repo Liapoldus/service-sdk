@@ -40,16 +40,17 @@ var (
 // The SDK fills ManifestVersion and SDKVersion and canonicalizes the resulting
 // document before it is exposed on the REST endpoint.
 type ManifestDescriptor struct {
-	ID              string                     `json:"id"`
-	Version         string                     `json:"version"`
-	SDKVersion      string                     `json:"sdkVersion"`
-	ProtocolVersion string                     `json:"protocolVersion"`
-	ManifestVersion string                     `json:"manifestVersion"`
-	Capabilities    []CapabilityDescriptor     `json:"capabilities,omitempty"`
-	PeerContracts   []PeerContractDescriptor   `json:"peerContracts,omitempty"`
-	Resources       []ResourceDescriptor       `json:"resources,omitempty"`
-	ConfigurationUI *ConfigurationUIDescriptor `json:"configurationUI,omitempty"`
-	Runtime         RuntimeDescriptor          `json:"runtime"`
+	ID              string                          `json:"id"`
+	Version         string                          `json:"version"`
+	SDKVersion      string                          `json:"sdkVersion"`
+	ProtocolVersion string                          `json:"protocolVersion"`
+	ManifestVersion string                          `json:"manifestVersion"`
+	Capabilities    []CapabilityDescriptor          `json:"capabilities,omitempty"`
+	PeerContracts   []PeerContractDescriptor        `json:"peerContracts,omitempty"`
+	Resources       []ResourceDescriptor            `json:"resources,omitempty"`
+	ConfigurationUI *ConfigurationUIDescriptor      `json:"configurationUI,omitempty"`
+	EditorButtons   *ServiceEditorButtonsDescriptor `json:"editorButtons,omitempty"`
+	Runtime         RuntimeDescriptor               `json:"runtime"`
 }
 
 const (
@@ -120,6 +121,12 @@ func PrepareManifest(descriptor ManifestDescriptor) (ManifestDescriptor, error) 
 	prepared.Capabilities = append([]CapabilityDescriptor(nil), descriptor.Capabilities...)
 	prepared.PeerContracts = append([]PeerContractDescriptor(nil), descriptor.PeerContracts...)
 	prepared.Resources = append([]ResourceDescriptor(nil), descriptor.Resources...)
+	if descriptor.EditorButtons != nil {
+		buttons := *descriptor.EditorButtons
+		buttons.Buttons = append([]ServiceEditorButton(nil), descriptor.EditorButtons.Buttons...)
+		sort.Slice(buttons.Buttons, func(left, right int) bool { return buttons.Buttons[left].ID < buttons.Buttons[right].ID })
+		prepared.EditorButtons = &buttons
+	}
 	for index, resource := range descriptor.Resources {
 		if resource.Publication != nil {
 			publication := *resource.Publication
@@ -246,6 +253,9 @@ func (descriptor ManifestDescriptor) Validate() error {
 	if err := validateConfigurationUIDescriptor(descriptor.ConfigurationUI); err != nil {
 		return err
 	}
+	if err := ValidateServiceEditorButtons(descriptor.ID, descriptor.EditorButtons); err != nil {
+		return err
+	}
 	if descriptor.ConfigurationUI != nil {
 		contracts := make(map[string]bool, len(descriptor.PeerContracts))
 		for _, contract := range descriptor.PeerContracts {
@@ -274,6 +284,10 @@ func (descriptor ManifestDescriptor) Validate() error {
 	}
 	return nil
 }
+
+// ServiceEditorButtonKey returns the stable service-namespaced ID for a
+// developer-owned key. Changing localized labels never changes this ID.
+func ServiceEditorButtonKey(serviceID, key string) string { return serviceID + "." + key }
 
 func validResourceKind(value string) bool {
 	switch value {

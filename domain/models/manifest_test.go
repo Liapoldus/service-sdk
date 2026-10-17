@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -28,6 +29,48 @@ func TestCanonicalManifestAppliesDefaultsAndSortsCollections(t *testing.T) {
 	}
 	if strings.Index(value, `"id":"project-files"`) > strings.Index(value, `"id":"sites"`) {
 		t.Fatalf("resources were not canonicalized by ID: %s", value)
+	}
+}
+
+func TestServiceEditorButtonIDIsNamespacedAndIndependentFromLocalizedLabels(t *testing.T) {
+	button := NewServiceEditorButton("server", "endpoints", ConfigurationUIText{RU: "Эндпоинты", EN: "Endpoints"}, ConfigurationUIText{RU: "Редактировать", EN: "Edit"})
+	if button.ID != "server.endpoints" || button.Key != "endpoints" {
+		t.Fatalf("unexpected button identity: %#v", button)
+	}
+	manifest := ManifestDescriptor{ID: "server", Version: "1.0.0", EditorButtons: &ServiceEditorButtonsDescriptor{Version: ServiceEditorButtonsVersion, Buttons: []ServiceEditorButton{button}}}
+	body, err := CanonicalManifest(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest.EditorButtons.Buttons[0].Label = ConfigurationUIText{RU: "Маршруты", EN: "Routes"}
+	body2, err := CanonicalManifest(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var first, second ManifestDescriptor
+	if err := json.Unmarshal(body, &first); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(body2, &second); err != nil {
+		t.Fatal(err)
+	}
+	if first.EditorButtons.Buttons[0].ID != second.EditorButtons.Buttons[0].ID {
+		t.Fatal("renaming localized button text changed its ID")
+	}
+}
+
+func TestServiceEditorButtonsRejectInvalidKeysLocalizationAndIDs(t *testing.T) {
+	valid := NewServiceEditorButton("server", "endpoints", ConfigurationUIText{RU: "Маршруты", EN: "Routes"}, ConfigurationUIText{RU: "Редактор", EN: "Editor"})
+	tests := []ServiceEditorButton{
+		{ID: "other.endpoints", Key: "endpoints", Label: valid.Label, Description: valid.Description},
+		{ID: "server.bad/key", Key: "bad/key", Label: valid.Label, Description: valid.Description},
+		{ID: valid.ID, Key: valid.Key, Label: ConfigurationUIText{RU: "Маршруты"}, Description: valid.Description},
+		{ID: valid.ID, Key: valid.Key, Label: valid.Label, Description: ConfigurationUIText{RU: "Описание", EN: "secret=bad"}},
+	}
+	for index, button := range tests {
+		if err := ValidateServiceEditorButtons("server", &ServiceEditorButtonsDescriptor{Version: ServiceEditorButtonsVersion, Buttons: []ServiceEditorButton{button}}); err == nil {
+			t.Errorf("case %d accepted invalid button %#v", index, button)
+		}
 	}
 }
 

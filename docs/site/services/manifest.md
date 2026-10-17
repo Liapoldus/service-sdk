@@ -58,6 +58,15 @@ metrics поверхность без product-specific копий.
 
 ## Declarative configuration UI
 
+Service manifest может также объявлять `editorButtons` версии
+`service-editor-buttons/v1`. SDK проверяет уникальный стабильный `key`,
+RU/EN `label` и `description`, а ID образуется как `<service-id>.<key>`.
+Переименование подписей не меняет ID. Это только запись каталога: она не
+содержит callback, код или страницу. Studio использует ID в настройках
+установленного StudioPlugin, где пользователь назначает ему страницу редактора.
+Core передаёт descriptor как opaque metadata, а Studio получает его через
+typed CLI.
+
 Manifest может содержать необязательный `configurationUI` с версией
 `service-configuration-ui/v1`. SDK-модель ограничивает descriptor локализованными
 RU/EN группами, JSON Pointer путями к полям, порядком и allowlisted hints:
