@@ -21,13 +21,13 @@ var (
 	// role, or not matched by the presented private key. The cause is
 	// deliberately never attached: a credential failure must not echo certificate
 	// bytes, key bytes or subject names into a log or an error.
-	ErrInvalidCredentials = errors.New("invalid Plugin SDK TLS credentials")
+	ErrInvalidCredentials = errors.New("invalid Service SDK TLS credentials")
 	// ErrWeakCredentialKey rejects a syntactically valid but too small private
 	// key before it can be offered to a TLS handshake.
-	ErrWeakCredentialKey = errors.New("weak Plugin SDK TLS private key")
+	ErrWeakCredentialKey = errors.New("weak Service SDK TLS private key")
 	// ErrCredentialsUnavailable reports that operator-supplied credential
 	// material could not be read or reloaded from its source.
-	ErrCredentialsUnavailable = errors.New("unavailable Plugin SDK TLS credentials")
+	ErrCredentialsUnavailable = errors.New("unavailable Service SDK TLS credentials")
 )
 
 const (
@@ -49,7 +49,7 @@ type CredentialsMaterial struct {
 	CABundle []byte
 
 	// ServerCertificateFile/ServerCertificatePEM and ServerKeyFile/ServerKeyPEM
-	// are the plugin-side keypair. Both are required.
+	// are the service-side keypair. Both are required.
 	ServerCertificateFile string
 	ServerKeyFile         string
 	ServerCertificatePEM  []byte
@@ -57,7 +57,7 @@ type CredentialsMaterial struct {
 
 	// ClientCertificateFile/ClientCertificatePEM and
 	// ClientKeyFile/ClientKeyPEM are the Core-side keypair. They are required
-	// only by the plugin-to-Core client and optional elsewhere.
+	// only by the service-to-Core client and optional elsewhere.
 	ClientCertificateFile string
 	ClientKeyFile         string
 	ClientCertificatePEM  []byte
@@ -157,7 +157,7 @@ func (credentials *Credentials) TrustAuthorities() []*x509.Certificate {
 	return append([]*x509.Certificate(nil), credentials.authorities...)
 }
 
-// ServerCertificate returns the plugin-side keypair used for TLS server
+// ServerCertificate returns the service-side keypair used for TLS server
 // authentication. The second result is false when no server keypair is present.
 func (credentials *Credentials) ServerCertificate() (tls.Certificate, bool) {
 	if credentials == nil || credentials.server == nil {
@@ -234,7 +234,7 @@ func (provider *StaticCredentialsProvider) Zeroize() {
 
 // FileCredentialsProvider reloads credential material from operator files when
 // a watched file's size or modification time changes, so a rotation performed on
-// disk takes effect without restarting the plugin process. A reload that fails
+// disk takes effect without restarting the service process. A reload that fails
 // is reported as an error and is not retried until a watched file changes again;
 // the provider never silently serves material it could not validate.
 type FileCredentialsProvider struct {

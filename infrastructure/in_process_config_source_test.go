@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/interfaces"
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/domain/interfaces"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
 )
 
 func TestInProcessConfigurationSourceExposesOnlyTwoExactSlots(t *testing.T) {
@@ -82,9 +82,26 @@ func TestInProcessConfigurationSourceHonoursCancellation(t *testing.T) {
 	}
 }
 
+func TestNomenclatureMigrationPreservesOpaqueGenerationBytes(t *testing.T) {
+	// Historical product payloads are data, not SDK nomenclature to rewrite.
+	raw := "{\n  \"plugin\":\"plugin-sdk\", \"method\":\"plugin.call\"\n}\n"
+	active := testInProcessConfiguration(t, "plugin-generation-1", raw)
+	source, err := NewInProcessConfigurationSource(InProcessConfigurationSnapshot{InstanceID: "plugin-instance", Active: active})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := source.PullExact(context.Background(), active.Generation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got.Configuration.Bytes()) != raw || got.Configuration.SHA256 != models.Digest([]byte(raw)) || got.Configuration.Generation != active.Generation {
+		t.Fatal("migration changed opaque generation bytes, digest or identifier")
+	}
+}
+
 func testInProcessConfiguration(t *testing.T, generation, raw string) models.Configuration {
 	t.Helper()
-	configuration, err := models.NewConfiguration(generation, "plugin-settings/v3", models.Digest([]byte(raw)), []byte(raw))
+	configuration, err := models.NewConfiguration(generation, "service-settings/v3", models.Digest([]byte(raw)), []byte(raw))
 	if err != nil {
 		t.Fatal(err)
 	}

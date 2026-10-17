@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-var ErrInvalidLoopbackPlaintextServer = errors.New("invalid Plugin SDK loopback plaintext health server")
+var ErrInvalidLoopbackPlaintextServer = errors.New("invalid Service SDK loopback plaintext health server")
 
 // LoopbackHealthServer is an explicitly selected development-only REST server.
 // It has no caller-provided handler: the SDK itself serves exactly the generic
@@ -22,8 +22,8 @@ type LoopbackHealthServer struct {
 	grace  time.Duration
 }
 
-// NewLoopbackHealthServer opts one plugin process into the loopback-only,
-// plaintext health profile. The default Plugin SDK composition does not create
+// NewLoopbackHealthServer opts one service process into the loopback-only,
+// plaintext health profile. The default Service SDK composition does not create
 // this server; choosing it always requires an explicit call to this constructor.
 func NewLoopbackHealthServer(contract HTTPContract, errorLog *log.Logger) (*LoopbackHealthServer, error) {
 	if err := contract.validate(); err != nil {
@@ -48,7 +48,7 @@ func NewLoopbackHealthServer(contract HTTPContract, errorLog *log.Logger) (*Loop
 		}
 		allowedExcluded[name] = struct{}{}
 	}
-	for name := range contract.Plugin.Endpoints {
+	for name := range contract.Service.Endpoints {
 		if name == profile.ExposedEndpoint.EndpointKey {
 			continue
 		}
@@ -56,7 +56,7 @@ func NewLoopbackHealthServer(contract HTTPContract, errorLog *log.Logger) (*Loop
 			return nil, ErrInvalidLoopbackPlaintextServer
 		}
 	}
-	if len(allowedExcluded) != len(contract.Plugin.Endpoints)-1 {
+	if len(allowedExcluded) != len(contract.Service.Endpoints)-1 {
 		return nil, ErrInvalidLoopbackPlaintextServer
 	}
 	endpoint, err := contract.Endpoint(profile.ExposedEndpoint.EndpointKey)
@@ -70,25 +70,25 @@ func NewLoopbackHealthServer(contract HTTPContract, errorLog *log.Logger) (*Loop
 
 	handler := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if request.Method != endpoint.Method || request.URL.Path != endpoint.Path {
-			writeLoopbackProblem(writer, contract.Plugin.Responses.ContentTypes.JSON, notFound, profile.ProblemResponseField)
+			writeLoopbackProblem(writer, contract.Service.Responses.ContentTypes.JSON, notFound, profile.ProblemResponseField)
 			return
 		}
-		writer.Header().Set("Content-Type", contract.Plugin.Responses.ContentTypes.JSON)
-		writer.WriteHeader(contract.Plugin.Responses.Health.Status)
-		if err := json.NewEncoder(writer).Encode(contract.Plugin.Responses.Health.Body); err != nil {
+		writer.Header().Set("Content-Type", contract.Service.Responses.ContentTypes.JSON)
+		writer.WriteHeader(contract.Service.Responses.Health.Status)
+		if err := json.NewEncoder(writer).Encode(contract.Service.Responses.Health.Body); err != nil {
 			panic(http.ErrAbortHandler)
 		}
 	})
 	server := &LoopbackHealthServer{
-		grace: time.Duration(contract.Deadlines.PluginShutdownGraceSeconds) * time.Second,
+		grace: time.Duration(contract.Deadlines.ServiceShutdownGraceSeconds) * time.Second,
 	}
 	server.server = &http.Server{
 		Handler:           handler,
 		ErrorLog:          errorLog,
-		ReadHeaderTimeout: time.Duration(contract.Deadlines.PluginReadHeaderSeconds) * time.Second,
-		ReadTimeout:       time.Duration(contract.Deadlines.PluginReadSeconds) * time.Second,
-		WriteTimeout:      time.Duration(contract.Deadlines.PluginWriteSeconds) * time.Second,
-		IdleTimeout:       time.Duration(contract.Deadlines.PluginIdleSeconds) * time.Second,
+		ReadHeaderTimeout: time.Duration(contract.Deadlines.ServiceReadHeaderSeconds) * time.Second,
+		ReadTimeout:       time.Duration(contract.Deadlines.ServiceReadSeconds) * time.Second,
+		WriteTimeout:      time.Duration(contract.Deadlines.ServiceWriteSeconds) * time.Second,
+		IdleTimeout:       time.Duration(contract.Deadlines.ServiceIdleSeconds) * time.Second,
 	}
 	return server, nil
 }
@@ -157,7 +157,7 @@ func isLoopbackTCPListener(listener net.Listener) bool {
 }
 
 // GracefulShutdown drains requests using the same bounded shutdown duration as
-// the versioned plugin REST contract.
+// the versioned service REST contract.
 func (server *LoopbackHealthServer) GracefulShutdown(ctx context.Context) error {
 	if server == nil || server.server == nil {
 		return ErrInvalidLoopbackPlaintextServer

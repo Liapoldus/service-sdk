@@ -1,7 +1,7 @@
 package interfaces
 
 // PeerAuthorizer decides whether a verified mutual-TLS peer identity may call
-// the plugin lifecycle API. It is deliberately policy-agnostic: the operator
+// the service lifecycle API. It is deliberately policy-agnostic: the operator
 // supplies the expected identity, and the SDK enforces per-replica mutual TLS
 // with no plaintext and no bearer-only downgrade path.
 type PeerAuthorizer interface {

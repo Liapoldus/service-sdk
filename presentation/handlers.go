@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
 )
 
 // handleHealth answers the liveness endpoint with the injected status and the
@@ -65,12 +65,12 @@ func (set *HandlerSet) handleIdentity(writer http.ResponseWriter, _ *http.Reques
 	set.writeJSON(writer, set.contracts.Registration.MediaType, http.StatusOK, registration)
 }
 
-// handleManifest answers with the plugin's own manifest bytes.
+// handleManifest answers with the service's own manifest bytes.
 func (set *HandlerSet) handleManifest(writer http.ResponseWriter, request *http.Request) {
 	set.serveMetadata(writer, request, set.metadata.Manifest, set.contracts.Manifest)
 }
 
-// handleConfigurationSchema answers with the plugin's own configuration schema
+// handleConfigurationSchema answers with the service's own configuration schema
 // bytes.
 func (set *HandlerSet) handleConfigurationSchema(writer http.ResponseWriter, request *http.Request) {
 	set.serveMetadata(writer, request, set.metadata.ConfigurationSchema, set.contracts.ConfigurationSchema)
@@ -195,11 +195,11 @@ func containsContractValue(values []string, candidate string) bool {
 	return false
 }
 
-// serveMetadata publishes one plugin-owned document.
+// serveMetadata publishes one service-owned document.
 //
-// The bytes are written exactly as the plugin produced them: the manifest and the
-// configuration schema are owned by the plugin, and re-encoding them here would
-// silently change a document Core and the plugin both read. The layer therefore
+// The bytes are written exactly as the service produced them: the manifest and the
+// configuration schema are owned by the service, and re-encoding them here would
+// silently change a document Core and the service both read. The layer therefore
 // only refuses, and it refuses on the two facts the contract makes its own: a
 // document that is not exactly one JSON object, and a document larger than the
 // lower of the document's own limit and the metadata cap.

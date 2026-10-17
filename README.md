@@ -1,13 +1,13 @@
-# Liapoldus Plugin SDK
+# Liapoldus Service SDK
 
-Отдельный четырёхслойный Go-модуль общего Core↔plugin lifecycle для отдельных
-процессов и доверенных statically composed plugins.
-Текущий локальный SDK worktree проходит `make check` (14 файлов / 190 тестов),
-Go build/vet и child-process conformance. На 2026-10-04 Core, Server и forms-db
-также прошли локальные интеграционные gates с SDK; Core→Server→forms-db проверен
-на macOS и Linux/OrbStack, включая PostgreSQL, MySQL и MariaDB. Это не означает,
-что текущий WIP опубликован или проверен hosted CI. Оставшиеся внешние release
-gates перечислены в [TODO.md](https://github.com/Liapoldus/plugin-sdk/blob/main/TODO.md).
+Отдельный четырёхслойный Go-модуль общего Core↔service lifecycle для отдельных
+процессов и доверенных statically composed services.
+Канонический раздел документации — `/service-sdk`; руководство по созданию
+runtime Services — [разработка сервисов](/services/development).
+Control plane: Studio → CLI → Core → Service SDK REST. Data plane: независимые
+services → Wool. Только расширения редактора называются StudioPlugins.
+Датированные результаты прежних проверок сохранены в [TODO](./todo);
+они не подтверждают интеграцию после breaking nomenclature migration.
 
 ## Единственный источник contract
 
@@ -18,7 +18,7 @@ REST и in-process adapters обязаны реализовывать одну l
 
 Для trusted Go composition SDK предоставляет `infrastructure.InProcessReplica`.
 Composition root создаёт `NewInProcessConfigurationSourceForInstance`, передаёт
-source и plugin-owned `ConfigurationApplier` в `NewInProcessReplica`, а Core host
+source и service-owned `ConfigurationApplier` в `NewInProcessReplica`, а Core host
 публикует immutable active/previous snapshot через `Publish`. Replica не
 открывает listener, не читает SQLite и использует тот же `Reload`/ACK/readiness
 контракт, что и REST+mTLS client.
@@ -27,7 +27,7 @@ source и plugin-owned `ConfigurationApplier` в `NewInProcessReplica`, а Core 
 Go-кодом в `infrastructure/contract_definitions.go`. Production loaders сохраняют
 свои API и возвращают независимые maps/slices без разбора статического JSON.
 Маршруты, методы, media types, статусы, коды, лимиты, deadlines, TLS и outcomes
-публикуются в versioned JSON artifacts под `infrastructure/assets/plugin-sdk/`.
+публикуются в versioned JSON artifacts под `infrastructure/assets/service-sdk/`.
 `make contracts` детерминированно обновляет constants и schema документы;
 `make contracts-check` проверяет их без записи и входит в `make check`.
 Native Go tests проверяют JSON parity, validation и владение mutable values;
@@ -64,14 +64,14 @@ Core обязан:
   contract (`contractVersion`, `instanceId`, `replicaId`,
   `appliedGeneration`, `ready`).
 
-`Rollback` остаётся операцией Core Management API. Plugin-side rollback
+`Rollback` остаётся операцией Core Management API. Service-side rollback
 endpoint не существует, и его появление ломает suite: production-дерево
-проверяется на отсутствие любого plugin-side rollback.
+проверяется на отсутствие любого service-side rollback.
 
 ## Lifecycle
 
 `Reload` — это уведомление, а не передача конфигурации: descriptor несёт
-только `generation`, `sha256`, `schemaVersion`. Plugin сам тянет ровно это
+только `generation`, `sha256`, `schemaVersion`. Service сам тянет ровно это
 поколение и применяет документ.
 
 Политика `Lifecycle.Reload` по порядку: отклонить descriptor, нарушающий
@@ -79,7 +79,7 @@ endpoint не существует, и его появление ломает su
 pull; отклонить descriptor, противоречащий активному поколению, без pull;
 pull-нуть точное поколение; отклонить поколение, которое Core больше не
 желает; проверить generation, digest и schema version и по объявлению, и по
-самим байтам; и только затем вызвать plugin-owned applier.
+самим байтам; и только затем вызвать service-owned applier.
 
 SDK никогда не повторяет pull или apply по собственной инициативе, не
 применяет документ с непроверенным digest и не заменяет ранее активную
@@ -94,17 +94,17 @@ status и уникальный код, и suite проверяет, что outco
 Документ — opaque JSON object. SDK сохраняет байты, которые вернул Core, без
 remarshal и без нормализации, отклоняет duplicate JSON object keys, проверяет
 JSON syntax, размер, generation, digest и schema version, и только после этого
-вызывает plugin-owned `ConfigurationApplier`. Плагин сам валидирует документ по
+вызывает service-owned `ConfigurationApplier`. Сервис сам валидирует документ по
 своей версионированной JSON Schema и атомарно активирует его; при ошибке
 предыдущая конфигурация остаётся полностью рабочей, отменённый context
 прерывает apply без активации. SDK не интерпретирует ни одного product field,
 не знает capabilities, providers, DB drivers и public routes. Product settings,
-Manifest и schemas остаются в соответствующих plugin repos.
+Manifest и schemas остаются в соответствующих service repos.
 
 ## Secrets
 
 `SecretManager` выдаёт и погашает scoped grant-ы для operational secrets.
-Во время вызова plugin-owned applier grant автоматически ограничен именно
+Во время вызова service-owned applier grant автоматически ограничен именно
 обрабатываемым candidate generation; вне этого вызова — уже активным
 поколением. Произвольное generation задать нельзя. Grant ограничен
 instance/replica, поколением и purpose, и
@@ -122,14 +122,14 @@ control URL отклоняются на handshake или на этапе кон�
 и plaintext downgrade-путей нет.
 
 Это ограничение относится к текущему production HTTP contract v1. Механика
-транспортной защиты принадлежит SDK, а не продуктовым плагинам. Отдельный
+транспортной защиты принадлежит SDK, а не продуктовым сервисам. Отдельный
 loopback-only plaintext profile для локальной разработки реализован как
 явный opt-in SDK API `infrastructure.NewLoopbackHealthServer`; по умолчанию
 listener не создаётся. SDK принимает только TCP bind с literal loopback IP и
 сам публикует на отдельном listener только generic `GET /healthz`.
 Основной SDK REST handler также всегда публикует универсальные `GET /healthz`
 и `GET /metrics`; маршруты, общий health response и exposition создаёт SDK из
-зафиксированного HTTP contract и SDK collector. Все product plugins используют
+зафиксированного HTTP contract и SDK collector. Все product services используют
 этот `HandlerSet` и не реализуют, не заменяют и не дублируют endpoints. Публичный
 data-plane listener при необходимости подключает тот же SDK
 `NewObservabilityHandler` с тем же collector.
@@ -138,9 +138,9 @@ data-plane listener при необходимости подключает то�
 metrics, admin и artifact endpoints также доступны только через mTLS.
 Config pull и secret grants всегда требуют mTLS и недоступны через plaintext
 listener/client. TLS failure не включает plaintext fallback. mTLS обязателен
-для чувствительных операций и production Core↔plugin REST. Точные значения
+для чувствительных операций и production Core↔service REST. Точные значения
 profile публикуются в generated versioned artifact
-[`loopback-plaintext-profile.json`](infrastructure/assets/plugin-sdk/v2/loopback-plaintext-profile.json).
+[`loopback-plaintext-profile.json`](infrastructure/assets/service-sdk/v2/loopback-plaintext-profile.json).
 
 Credentials принадлежат оператору: SDK не встраивает CA, не генерирует
 сертификаты и не подставляет заглушку. `LoadCredentials` валидирует материал
@@ -166,29 +166,29 @@ Revocation и peer identity вычисляются один раз на handshak
 `interfaces/`. Зависимости направлены внутрь: domain не импортирует другие
 слои, application и infrastructure импортируют domain, presentation —
 domain и application. `presentation` не импортирует `infrastructure`, поэтому
-composition живёт вне четырёх слоёв — в собственном `main` плагина.
+composition живёт вне четырёх слоёв — в собственном `main` сервиса.
 `tests/layers.test.ts` падает на нарушении любого из этих правил, на
 появлении пятого слоя или product-specific package.
 
-SDK не зависит от Core, `pluginprotocol`, Caddy, любого product plugin или
-стороннего модуля: production-код импортирует только четыре слоя и
-standard library. `pluginprotocol` остаётся независимой библиотекой только
-для generic plugin↔plugin взаимодействия и этот модуль её не импортирует.
+SDK не зависит от Core, `wool`, конкретного web server, любого product service
+или стороннего модуля: production-код импортирует только четыре слоя и
+standard library. `wool` остаётся независимой библиотекой только
+для generic service↔service взаимодействия и этот модуль её не импортирует.
 
-## Что делает автор плагина
+## Что делает автор сервиса
 
-Автор реализует только plugin-owned порты и собирает их в своём `main`:
+Автор реализует только service-owned порты и собирает их в своём `main`:
 
 - `interfaces.ConfigurationApplier` — валидация и атомарное применение
   документа.
-- `interfaces.PluginMetadata` — `Manifest` и версионированная settings JSON
+- `interfaces.ServiceMetadata` — `Manifest` и версионированная settings JSON
   Schema, публикуемые байт-в-байт.
 - `interfaces.Logger`, `interfaces.LifecycleObserver`, `interfaces.Clock` и
   observability, если автор хочет собственную телеметрию.
-- `application.NewSecretManager` там, где плагину нужны operational secrets.
+- `application.NewSecretManager` там, где сервису нужны operational secrets.
 
 SDK даёт готовые адаптеры: `infrastructure.LoadHTTPContract`,
-`NewLifecycle`, `NewCoreConfigurationSource`, `NewPluginClient`,
+`NewLifecycle`, `NewCoreConfigurationSource`, `NewServiceClient`,
 `NewCoreSecretBroker`, `NewMutualTLSClient`, `NewMutualTLSServer`,
 `NewJSONLogger`, `NewObserverPrometheusCollector`, `NewRecorder`,
 `NewLoggingObserver`, `NewRevocation` и `presentation.NewHandlerSet`.
@@ -219,13 +219,16 @@ key, DSN, grant handle и transport secrets не пишутся. `application.Ou
 
 ## Canonical module path
 
-Canonical import path, утверждённый владельцем: `github.com/Liapoldus/plugin-sdk/v2`.
-`go.mod`, SDK imports, Core и Server consumer теперь используют этот путь.
-Не выпускать модуль, пока forms-db и общие integration gates не пройдены.
+Canonical import path, утверждённый владельцем: `github.com/Liapoldus/service-sdk/v2`.
+Все потребители должны использовать этот путь и Service API из regenerated
+contracts. Старые imports, HTTP paths и API aliases не поддерживаются.
+Нейтральные ID, application methods и исходные immutable generation bytes/digests
+не меняются. SDK-only gate не заменяет проверки Core и service-потребителей;
+не выпускать модуль до прохождения общих integration gates.
 
 ## Release integrity
 
-Каждый `plugin-sdk-v2.*` release публикуется только release workflow после
+Каждый `service-sdk-v2.*` release публикуется только release workflow после
 `go test ./...`, `go vet ./...` и проверки module path. Workflow создаёт
 детерминированный source artifact, SPDX SBOM, keyless Sigstore bundle для
 artifact и SBOM и GitHub build-provenance attestation. Потребитель проверяет
@@ -242,5 +245,5 @@ checksum и bundle до добавления SDK в lockfile; наличие о�
 поэтому для него нужны Go toolchain и Node. На 2026-10-04 текущий локальный
 набор включает 14 файлов и 190 тестов; тот же suite прошёл в Ubuntu 24.04 ARM64
 VM под OrbStack. Сквозная интеграция дополнительно проверяется в Core и
-продуктовых plugins; локальный PASS не заменяет hosted CI на согласованных
+продуктовых services; локальный PASS не заменяет hosted CI на согласованных
 опубликованных revisions и release provenance.

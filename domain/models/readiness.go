@@ -3,7 +3,7 @@ package models
 // Readiness reports the configuration generation this replica has actually
 // applied. It never claims a generation that failed validation or application.
 // PendingGeneration names the most recent generation this replica refused, so
-// Core can fence a degraded replica without the plugin guessing desired state.
+// Core can fence a degraded replica without the service guessing desired state.
 type Readiness struct {
 	Ready             bool   `json:"ready"`
 	Generation        string `json:"generation"`

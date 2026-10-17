@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	sdk "github.com/Liapoldus/plugin-sdk/v2/infrastructure"
+	sdk "github.com/Liapoldus/service-sdk/v2/infrastructure"
 )
 
 func main() {
@@ -42,7 +42,7 @@ func main() {
 		data, err := json.MarshalIndent(definitions[name], "", "  ")
 		must(err)
 		data = append(data, '\n')
-		path := filepath.Join(*root, "infrastructure/assets/plugin-sdk", filepath.FromSlash(name))
+		path := filepath.Join(*root, "infrastructure/assets/service-sdk", filepath.FromSlash(name))
 		existing, err := os.ReadFile(path) //nolint:gosec // path is constrained to the repository contract output directory.
 		must(err)
 		if bytes.Equal(existing, data) {

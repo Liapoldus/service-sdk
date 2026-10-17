@@ -1,5 +1,5 @@
 {
-  "contractVersion": "liapoldus.plugin-sdk.loopback-plaintext.v2",
+  "contractVersion": "liapoldus.service-sdk.loopback-plaintext.v2",
   "enabledByDefault": false,
   "transport": {
     "network": "tcp",
@@ -9,7 +9,7 @@
     "tlsFailureFallback": false
   },
   "exposedEndpoint": {
-    "httpContractVersion": "liapoldus.plugin-sdk.http.v2",
+    "httpContractVersion": "liapoldus.service-sdk.http.v2",
     "endpointKey": "health"
   },
   "notFoundProblemKey": "notFound",

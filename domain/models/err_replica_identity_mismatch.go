@@ -2,4 +2,4 @@ package models
 
 import "errors"
 
-var ErrReplicaIdentityMismatch = errors.New("plugin SDK replica identity does not match its certificate")
+var ErrReplicaIdentityMismatch = errors.New("service SDK replica identity does not match its certificate")

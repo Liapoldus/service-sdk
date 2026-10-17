@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/Liapoldus/plugin-sdk/v2/tests/support/process"
+	"github.com/Liapoldus/service-sdk/v2/tests/support/process"
 	"log"
 	"net/http"
 	"os"
@@ -13,7 +13,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Liapoldus/plugin-sdk/v2/infrastructure"
+	"github.com/Liapoldus/service-sdk/v2/infrastructure"
 )
 
 type readyLine struct {
@@ -27,7 +27,7 @@ func main() {
 	}
 	switch os.Args[1] {
 	case "default":
-		// A plugin that does not select NewLoopbackHealthServer opens no plaintext
+		// A service that does not select NewLoopbackHealthServer opens no plaintext
 		// SDK listener. This fixture deliberately uses no implicit profile default.
 		process.Must(json.NewEncoder(os.Stdout).Encode(readyLine{Enabled: false}))
 		waitForSignal()

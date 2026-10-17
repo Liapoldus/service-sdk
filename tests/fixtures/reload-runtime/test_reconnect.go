@@ -1,6 +1,6 @@
 package main
 
-// Fixture-only close-race churn against the plugin's own live mutual-TLS listener.
+// Fixture-only close-race churn against the service's own live mutual-TLS listener.
 //
 // This file is a test fixture and is never part of a production package. It asks a
 // question the rest of the fixture never asks: what does a serving listener do with
@@ -23,15 +23,15 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/Liapoldus/plugin-sdk/v2/tests/support/process"
+	"github.com/Liapoldus/service-sdk/v2/tests/support/process"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/interfaces"
-	"github.com/Liapoldus/plugin-sdk/v2/infrastructure"
+	"github.com/Liapoldus/service-sdk/v2/domain/interfaces"
+	"github.com/Liapoldus/service-sdk/v2/infrastructure"
 )
 
 // testChurnAttempts is how many connections are abandoned mid-request. It is large
@@ -77,7 +77,7 @@ type testChurnReport struct {
 	failure string
 }
 
-// testChurn drives one close race against the running plugin surface. It is not
+// testChurn drives one close race against the running service surface. It is not
 // stateful between runs: everything it reports is read from the listener.
 type testChurn struct {
 	contract    infrastructure.HTTPContract
@@ -135,7 +135,7 @@ func (churn *testChurn) run(parent context.Context) testChurnReport {
 }
 
 func (churn *testChurn) settleBound() time.Duration {
-	return testSeconds(churn.contract.Deadlines.PluginShutdownGraceSeconds) / testChurnSettleDivisor
+	return testSeconds(churn.contract.Deadlines.ServiceShutdownGraceSeconds) / testChurnSettleDivisor
 }
 
 // abandon completes one handshake, writes one real request onto the connection and
@@ -158,7 +158,7 @@ func (churn *testChurn) abandon(parent context.Context) error {
 	if _, err := connection.Write([]byte(churn.rawRequest())); err != nil {
 		return err
 	}
-	process.Must(connection.SetDeadline(time.Now().Add(testSeconds(churn.contract.Deadlines.PluginWriteSeconds))))
+	process.Must(connection.SetDeadline(time.Now().Add(testSeconds(churn.contract.Deadlines.ServiceWriteSeconds))))
 	return nil
 }
 
@@ -166,7 +166,7 @@ func (churn *testChurn) abandon(parent context.Context) error {
 // within the fixture's bound.
 func (churn *testChurn) readiness(parent context.Context) (testChurnAnswer, error) {
 	ctx, cancel := context.WithTimeout(parent,
-		testSeconds(churn.contract.Deadlines.PluginReadSeconds))
+		testSeconds(churn.contract.Deadlines.ServiceReadSeconds))
 	defer cancel()
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, churn.address+churn.readyPath, nil)
 	if err != nil {

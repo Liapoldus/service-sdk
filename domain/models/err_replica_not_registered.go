@@ -2,4 +2,4 @@ package models
 
 import "errors"
 
-var ErrReplicaNotRegistered = errors.New("plugin SDK replica is not registered")
+var ErrReplicaNotRegistered = errors.New("service SDK replica is not registered")

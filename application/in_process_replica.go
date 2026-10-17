@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/interfaces"
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/domain/interfaces"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
 )
 
-// InProcessReplicaConfig supplies the plugin-owned half of an explicitly
-// selected trusted Go composition. Core owns publication; the plugin owns
+// InProcessReplicaConfig supplies the service-owned half of an explicitly
+// selected trusted Go composition. Core owns publication; the service owns
 // validation, atomic application, readiness and observations.
 type InProcessReplicaConfig struct {
 	Source   interfaces.ConfigurationSource
@@ -18,17 +18,17 @@ type InProcessReplicaConfig struct {
 	Observer interfaces.LifecycleObserver
 	// PeerIdentity and Release make an in-process replica eligible for Core's
 	// exact-cohort rollout controls. They are intentionally explicit: Core must
-	// never invent an incarnation or artifact digest for a trusted plugin.
+	// never invent an incarnation or artifact digest for a trusted service.
 	PeerIdentity models.PeerReplicaID
 	Release      models.ReplicaRelease
-	// ValidateConfiguration is the plugin-owned preflight used before Core
+	// ValidateConfiguration is the service-owned preflight used before Core
 	// persists a traffic-rollout candidate. It must not mutate active state.
 	ValidateConfiguration func(context.Context, []byte) error
 }
 
 // InProcessReplica is the SDK lifecycle adapter consumed by a Core host. It
 // exposes the same Reload/acknowledgement boundary as the REST client while
-// keeping transport, listeners and persistence out of the plugin.
+// keeping transport, listeners and persistence out of the service.
 type InProcessReplica struct {
 	publisher interfaces.ConfigurationPublisher
 	lifecycle *Lifecycle
@@ -127,7 +127,7 @@ func (replica *InProcessReplica) Release() models.ReplicaRelease {
 	return replica.release
 }
 
-// ValidateConfiguration delegates candidate validation to the plugin-owned
+// ValidateConfiguration delegates candidate validation to the service-owned
 // validator. A missing validator is deliberately reported as unavailable.
 func (replica *InProcessReplica) ValidateConfiguration(ctx context.Context, raw []byte) error {
 	if replica == nil || replica.validate == nil {

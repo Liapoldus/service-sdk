@@ -14,7 +14,7 @@ type ReplicaRegistrationRequest struct {
 	RestEndpoint    string                `json:"restEndpoint"`
 	PeerEndpoints   []ReplicaPeerEndpoint `json:"peerEndpoints"`
 	Release         ReplicaRelease        `json:"release"`
-	// These are generic, plugin-owned release compatibility claims; Core and
+	// These are generic, service-owned release compatibility claims; Core and
 	// SDK treat ContractID as opaque.
 	AdvertisedContracts []ContractVersion `json:"advertisedContracts"`
 	AcceptedContracts   []ContractRange   `json:"acceptedContracts"`

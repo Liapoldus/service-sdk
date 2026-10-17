@@ -3,11 +3,11 @@ package presentation
 import (
 	"context"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
 )
 
 // ManifestProvider is the standard SDK metadata provider. It is intentionally
-// immutable: a running plugin serves the same live manifest and schema bytes
+// immutable: a running service serves the same live manifest and schema bytes
 // for its entire process lifetime.
 type ManifestProvider struct {
 	manifest []byte
@@ -21,6 +21,9 @@ func NewManifestProvider(descriptor models.ManifestDescriptor, schema []byte) (*
 	}
 	canonicalSchema, err := models.CanonicalJSONObject(schema)
 	if err != nil {
+		return nil, err
+	}
+	if err := models.ValidateConfigurationUI(descriptor.ConfigurationUI, canonicalSchema); err != nil {
 		return nil, err
 	}
 	return &ManifestProvider{manifest: append([]byte(nil), manifest...), schema: append([]byte(nil), canonicalSchema...)}, nil

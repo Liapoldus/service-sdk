@@ -8,8 +8,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
-	"github.com/Liapoldus/plugin-sdk/v2/infrastructure"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/infrastructure"
 )
 
 type responseTransport struct{}
@@ -41,7 +41,7 @@ func main() {
 	check(err)
 	identity, err := models.NewPeerIdentity("expected-core", "")
 	check(err)
-	client, err := infrastructure.NewPluginClient(contract, "https://localhost", responseTransport{}, identity)
+	client, err := infrastructure.NewServiceClient(contract, "https://localhost", responseTransport{}, identity)
 	check(err)
 	contents, err := client.ConfigurationSchema(context.Background())
 	check(err)

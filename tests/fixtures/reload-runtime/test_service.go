@@ -1,12 +1,12 @@
 package main
 
-// Fixture-only plugin-owned boundary and contract composition.
+// Fixture-only service-owned boundary and contract composition.
 //
 // This file is a test fixture and is never part of a production package. The
-// applier, the metadata provider and the metrics sink are exactly the plugin
-// owned pieces a real plugin author writes: the SDK owns the transport, the
-// lifecycle and the REST surface, and the plugin owns what its document means.
-// The contract mapping below is the composition step a plugin author also has to
+// applier, the metadata provider and the metrics sink are exactly the service
+// owned pieces a real service author writes: the SDK owns the transport, the
+// lifecycle and the REST surface, and the service owns what its document means.
+// The contract mapping below is the composition step a service author also has to
 // write, because the handler layer takes the contract as an injected value and
 // never parses the asset itself.
 
@@ -16,7 +16,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/Liapoldus/plugin-sdk/v2/tests/support/process"
+	"github.com/Liapoldus/service-sdk/v2/tests/support/process"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -24,9 +24,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
-	"github.com/Liapoldus/plugin-sdk/v2/infrastructure"
-	"github.com/Liapoldus/plugin-sdk/v2/presentation"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/infrastructure"
+	"github.com/Liapoldus/service-sdk/v2/presentation"
 )
 
 var (
@@ -35,9 +35,9 @@ var (
 	errTestRoute        = errors.New("test fixture does not serve every contract route")
 )
 
-// testApplier is the plugin-owned validator and atomic applier.
+// testApplier is the service-owned validator and atomic applier.
 //
-// It inspects the plugin's own document and nothing else, and it activates a
+// It inspects the service's own document and nothing else, and it activates a
 // generation only after the whole document has been accepted, so a refusal
 // leaves the previously active configuration fully usable.
 type testApplier struct {
@@ -59,7 +59,7 @@ func newTestApplier(rejects ...string) *testApplier {
 	return applier
 }
 
-// Apply implements the plugin-owned applier port.
+// Apply implements the service-owned applier port.
 func (applier *testApplier) Apply(ctx context.Context, configuration models.Configuration) error {
 	if err := ctx.Err(); err != nil {
 		// A cancelled apply must activate nothing.
@@ -110,17 +110,42 @@ func (applier *testApplier) counters() (applied, refused uint64) {
 	return applier.applied, applier.refused
 }
 
-// testMetadata is the plugin-owned producer of the two opaque documents the SDK
+// testMetadata is the service-owned producer of the two opaque documents the SDK
 // publishes verbatim. The SDK never decodes them, so their shape is entirely the
-// plugin's business.
-type testMetadata struct{}
-
-func (testMetadata) Manifest(context.Context) ([]byte, error) {
-	return []byte(testManifestDocument), nil
+// service's business.
+type testMetadata struct {
+	provider *presentation.ManifestProvider
 }
 
-func (testMetadata) ConfigurationSchema(context.Context) ([]byte, error) {
-	return []byte(testSchemaDocument), nil
+func newTestMetadata() (testMetadata, error) {
+	provider, err := presentation.NewManifestProvider(models.ManifestDescriptor{
+		ID:      "reload-runtime-fixture",
+		Version: "1.0.0",
+		ConfigurationUI: &models.ConfigurationUIDescriptor{
+			Version: models.ConfigurationUIVersion,
+			Groups: []models.ConfigurationUIGroup{{
+				ID:    "general",
+				Title: models.ConfigurationUIText{RU: "Общие", EN: "General"},
+				Fields: []models.ConfigurationUIField{{
+					Path:   "/debug",
+					Label:  models.ConfigurationUIText{RU: "Диагностика", EN: "Diagnostics"},
+					Widget: "toggle",
+				}},
+			}},
+		},
+	}, []byte(testSchemaDocument))
+	if err != nil {
+		return testMetadata{}, err
+	}
+	return testMetadata{provider: provider}, nil
+}
+
+func (metadata testMetadata) Manifest(ctx context.Context) ([]byte, error) {
+	return metadata.provider.Manifest(ctx)
+}
+
+func (metadata testMetadata) ConfigurationSchema(ctx context.Context) ([]byte, error) {
+	return metadata.provider.ConfigurationSchema(ctx)
 }
 
 type testAdminMetadata struct{}
@@ -168,11 +193,11 @@ func (actions *testAdminActions) HandleAdminAction(ctx context.Context, input pr
 	}
 }
 
-// testMetricsSink is the plugin author's bridge from the application recorder to
+// testMetricsSink is the service author's bridge from the application recorder to
 // the infrastructure exposition. The application layer counts a bounded event;
 // the infrastructure collector renders it in the contract exposition format. The
 // SDK ships the two ends of that bridge but not the join, because which
-// instrumentation a plugin runs is the plugin's decision.
+// instrumentation a service runs is the service's decision.
 type testMetricsSink struct {
 	collector *infrastructure.ObserverPrometheusCollector
 }
@@ -207,7 +232,7 @@ func presentationContracts(contract infrastructure.HTTPContract) (presentation.C
 	if err != nil {
 		return presentation.Contracts{}, err
 	}
-	routes := make(map[string]presentation.Endpoint, len(contract.Plugin.Endpoints))
+	routes := make(map[string]presentation.Endpoint, len(contract.Service.Endpoints))
 	for _, name := range contract.EndpointNames() {
 		endpoint, err := contract.Endpoint(name)
 		if err != nil {
@@ -247,7 +272,7 @@ func presentationContracts(contract infrastructure.HTTPContract) (presentation.C
 		errorTable[key] = presentation.Problem{Status: problem.Status, Code: problem.Code}
 	}
 
-	plugin := contract.Plugin
+	service := contract.Service
 	contracts := presentation.Contracts{
 		ContractVersion:        contract.ContractVersion,
 		IdentityEndpoint:       served[testRouteIdentity],
@@ -260,56 +285,56 @@ func presentationContracts(contract infrastructure.HTTPContract) (presentation.C
 		AdminSurfaceEndpoint:   served[testRouteAdminSurface],
 		AdminActionEndpoint:    served[testRouteAdminAction],
 		MetricsEndpoint:        served[testRouteMetrics],
-		HealthStatus:           plugin.Responses.Health.Status,
-		HealthBody:             plugin.Responses.Health.Body,
-		ContentTypes:           presentation.ContentTypes{JSON: plugin.Responses.ContentTypes.JSON, Metrics: plugin.Responses.ContentTypes.Metrics},
-		ReloadRequest:          testDocument(plugin.ReloadRequest),
-		ReloadAcknowledgement:  testDocument(plugin.ReloadAcknowledgement),
-		Readiness:              testDocument(plugin.Readiness),
-		Manifest:               testDocument(plugin.Manifest),
-		ConfigurationSchema:    testDocument(plugin.ConfigurationSchema),
-		AdminSurface:           testDocument(plugin.AdminSurface),
+		HealthStatus:           service.Responses.Health.Status,
+		HealthBody:             service.Responses.Health.Body,
+		ContentTypes:           presentation.ContentTypes{JSON: service.Responses.ContentTypes.JSON, Metrics: service.Responses.ContentTypes.Metrics},
+		ReloadRequest:          testDocument(service.ReloadRequest),
+		ReloadAcknowledgement:  testDocument(service.ReloadAcknowledgement),
+		Readiness:              testDocument(service.Readiness),
+		Manifest:               testDocument(service.Manifest),
+		ConfigurationSchema:    testDocument(service.ConfigurationSchema),
+		AdminSurface:           testDocument(service.AdminSurface),
 		AdminAction: presentation.AdminActionContract{
-			MediaType:            plugin.AdminAction.MediaType,
-			MaximumRequestBytes:  plugin.AdminAction.MaximumRequestBytes,
-			MaximumResponseBytes: plugin.AdminAction.MaximumResponseBytes,
-			MaximumPageIDBytes:   plugin.AdminAction.MaximumPageIDBytes,
-			MaximumActionIDBytes: plugin.AdminAction.MaximumActionIDBytes,
-			PathSegmentPattern:   plugin.AdminAction.PathSegmentPattern,
-			ResponseStatus:       presentation.StatusRangeContract{Minimum: plugin.AdminAction.ResponseStatus.Minimum, Maximum: plugin.AdminAction.ResponseStatus.Maximum},
-			Deadline:             testSeconds(plugin.AdminAction.DeadlineSeconds),
+			MediaType:            service.AdminAction.MediaType,
+			MaximumRequestBytes:  service.AdminAction.MaximumRequestBytes,
+			MaximumResponseBytes: service.AdminAction.MaximumResponseBytes,
+			MaximumPageIDBytes:   service.AdminAction.MaximumPageIDBytes,
+			MaximumActionIDBytes: service.AdminAction.MaximumActionIDBytes,
+			PathSegmentPattern:   service.AdminAction.PathSegmentPattern,
+			ResponseStatus:       presentation.StatusRangeContract{Minimum: service.AdminAction.ResponseStatus.Minimum, Maximum: service.AdminAction.ResponseStatus.Maximum},
+			Deadline:             testSeconds(service.AdminAction.DeadlineSeconds),
 			InvocationContext: presentation.AdminInvocationContract{
-				MaximumBytes:        plugin.AdminAction.InvocationContext.MaximumBytes,
-				UnknownHeaderPrefix: plugin.AdminAction.InvocationContext.UnknownHeaderPrefix,
-				Required:            plugin.AdminAction.InvocationContext.Required,
-				Optional:            plugin.AdminAction.InvocationContext.Optional,
-				Headers:             plugin.AdminAction.InvocationContext.Headers,
+				MaximumBytes:        service.AdminAction.InvocationContext.MaximumBytes,
+				UnknownHeaderPrefix: service.AdminAction.InvocationContext.UnknownHeaderPrefix,
+				Required:            service.AdminAction.InvocationContext.Required,
+				Optional:            service.AdminAction.InvocationContext.Optional,
+				Headers:             service.AdminAction.InvocationContext.Headers,
 			},
 		},
 		ArtifactStream: presentation.ArtifactStreamContract{
-			MediaType:                     plugin.ArtifactStream.MediaType,
-			MetadataMediaType:             plugin.ArtifactStream.MetadataMediaType,
-			Parts:                         plugin.ArtifactStream.Parts,
-			PartOrder:                     plugin.ArtifactStream.PartOrder,
-			MaximumArtifactBytes:          plugin.ArtifactStream.MaximumArtifactBytes,
-			MinimumArtifactBytes:          plugin.ArtifactStream.MinimumArtifactBytes,
-			MaximumMetadataBytes:          plugin.ArtifactStream.MaximumMetadataBytes,
-			MaximumMultipartOverheadBytes: plugin.ArtifactStream.MaximumMultipartOverheadBytes,
-			MaximumRequestBytes:           plugin.ArtifactStream.MaximumRequestBytes,
-			MaximumReceiptBytes:           plugin.ArtifactStream.MaximumReceiptBytes,
-			AcceptedStatus:                plugin.ArtifactStream.AcceptedStatus,
-			FilenameForwarded:             plugin.ArtifactStream.FilenameForwarded,
+			MediaType:                     service.ArtifactStream.MediaType,
+			MetadataMediaType:             service.ArtifactStream.MetadataMediaType,
+			Parts:                         service.ArtifactStream.Parts,
+			PartOrder:                     service.ArtifactStream.PartOrder,
+			MaximumArtifactBytes:          service.ArtifactStream.MaximumArtifactBytes,
+			MinimumArtifactBytes:          service.ArtifactStream.MinimumArtifactBytes,
+			MaximumMetadataBytes:          service.ArtifactStream.MaximumMetadataBytes,
+			MaximumMultipartOverheadBytes: service.ArtifactStream.MaximumMultipartOverheadBytes,
+			MaximumRequestBytes:           service.ArtifactStream.MaximumRequestBytes,
+			MaximumReceiptBytes:           service.ArtifactStream.MaximumReceiptBytes,
+			AcceptedStatus:                service.ArtifactStream.AcceptedStatus,
+			FilenameForwarded:             service.ArtifactStream.FilenameForwarded,
 			Deadline:                      testSeconds(contract.Deadlines.ArtifactStreamSeconds),
 			InvocationContext: presentation.ArtifactInvocationContract{
-				MaximumBytes: plugin.ArtifactStream.InvocationContext.MaximumBytes,
-				Required:     plugin.ArtifactStream.InvocationContext.Required,
-				Optional:     plugin.ArtifactStream.InvocationContext.Optional,
-				Headers:      plugin.ArtifactStream.InvocationContext.Headers,
+				MaximumBytes: service.ArtifactStream.InvocationContext.MaximumBytes,
+				Required:     service.ArtifactStream.InvocationContext.Required,
+				Optional:     service.ArtifactStream.InvocationContext.Optional,
+				Headers:      service.ArtifactStream.InvocationContext.Headers,
 			},
 		},
 		Registration:         testDocument(infrastructure.DocumentContract{MediaType: contract.Identity.Registration.MediaType, MaximumBytes: contract.Identity.Registration.MaximumBytes, Required: contract.Identity.Registration.Required}),
-		MaximumMetadataBytes: plugin.MaximumMetadataBytes,
-		ReadinessDeadline:    testSeconds(contract.Deadlines.PluginReadinessSeconds),
+		MaximumMetadataBytes: service.MaximumMetadataBytes,
+		ReadinessDeadline:    testSeconds(contract.Deadlines.ServiceReadinessSeconds),
 		Problems:             problems,
 		Errors:               errorTable,
 		OutcomeProblems:      contract.OutcomeProblems,
@@ -353,7 +378,7 @@ func testTransportProblems(contract infrastructure.HTTPContract) (map[string]pre
 	// the path is resolved from the source location rather than from the working
 	// directory the harness happened to start the fixture in.
 	path := filepath.Join(filepath.Dir(thisFile), "..", "..", "..",
-		"infrastructure", "assets", "plugin-sdk", "v2", "http-contract.json")
+		"infrastructure", "assets", "service-sdk", "v2", "http-contract.json")
 	contents, err := os.ReadFile(path) //nolint:gosec // path is derived from the fixture source location and a fixed asset suffix.
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", errTestAsset, err)

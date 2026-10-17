@@ -1,4 +1,113 @@
-# TODO — Plugin SDK v2
+# TODO — Service SDK v2
+
+> Исторический отчёт: датированные проверки и исходные API names ниже сохранены
+> без переписывания. После breaking nomenclature migration активный модуль —
+> `github.com/Liapoldus/service-sdk/v2`, runtime entities — Services, peer library —
+> Wool (`github.com/Liapoldus/wool/v3`). Текущие контракты и пути определяются
+> кодом SDK и [обзором](./); прежние imports/routes не поддерживаются.
+
+## Peer picker wire semantics — 2026-10-17
+
+- The `peer` widget is now limited to string schema values: Studio writes one
+  service ID only after verifying its live manifest advertises the declared
+  `peerContractId`. Object-valued peer hints are rejected because the SDK has no
+  field-mapping contract and Studio must not guess object keys. This remains
+  declarative metadata; SDK/Core/Wool do not call peers or interpret payloads.
+- Evidence: `GOWORK=off GOFLAGS=-p=1 make check` passes, including Go lint,
+  unit/contract tests, generated-contract check, TypeScript lint/typecheck and
+  230 Vitest tests. This is local verification; no release/tag or hosted CI
+  claim.
+
+## Studio configuration metadata — 2026-10-13
+
+- [x] Core-restart lease recovery is implemented in
+  `infrastructure.MaintainReplicaLease`: temporary Core unavailability uses a
+  bounded retry; `replica_not_registered` re-publishes the same immutable
+  incarnation with fresh readiness/generation; `lease_expired` and identity
+  refusals stay terminal. Echo, Server, Domain and Runtime use this shared
+  lifecycle loop. The real mTLS child-process fixture simulates Core losing its
+  live registration and verifies same-incarnation re-registration plus current
+  generation/readiness; the focused Vitest and `GOFLAGS=-race` run both pass.
+  Targeted SDK infrastructure and active service command package tests pass.
+  Docker restart/re-registration acceptance remains a separate operator/runtime
+  gate.
+
+- [x] Current Service SDK manifest is typed/canonicalized and the SDK serves
+  service-owned manifest/schema bytes through its REST surface. Universal
+  `/healthz` and `/metrics` are owned by `HandlerSet`.
+- [x] Implement the initial `service-configuration-ui/v1` typed manifest model:
+  bounded RU/EN groups, JSON Pointer field hints, allowlisted widgets, logical
+  resource kinds and peer-contract references. No executable UI or secret/path
+  values are part of the descriptor.
+- [x] Add bounded manifest resource-catalog descriptors for `project` and
+  `service-admin` providers; resource UI fields now bind an explicit catalog ID
+  and kind. Canonicalization, duplicate/unknown provider, sensitive pointer,
+  invalid mapping and missing catalog tests pass. Core-backed CLI enumeration
+  and Studio picker integration are implemented locally; publication actions
+  remain a separate streaming workflow.
+- [~] The typed optional `publication` reference from a service resource to a
+  service-owned artifact action is implemented; SDK validates and defensively
+  copies page/action IDs, and consumers must verify the live Core-backed Admin
+  Surface. The SDK artifact-stream integration test passes (2/2). Core's real
+  child-process `service-artifact-forwarding.test.ts` passes (1/1), proving
+  bounded authorized byte streaming to the Service SDK without metadata
+  interpretation. CLI has a typed `service resource publish` path and tests for
+  safe artifact forwarding; Studio host/picker/native-confirmation plumbing is
+  present. The remaining gate is one end-to-end publication from Studio UI
+  through CLI → Core → SDK → Server-owned action, including operation result
+  observation; no UI publication acceptance is claimed yet.
+- [x] SDK validates the descriptor against JSON Schema in
+  `NewManifestProvider`, checks local `$ref`/field paths and widget types, hides
+  read-only/write-only/password/sensitive fields, canonicalizes group/field
+  ordering, and fails closed on unknown versions/widgets or external `$ref`.
+  Protected-path checks traverse `$ref`, `allOf`, `anyOf`, and `oneOf`, and deny
+  sensitive property names plus `x-liapoldus-sensitive`, `x-sensitive`,
+  `x-secret`, `x-redacted`, `readOnly`, `writeOnly`, and password formats.
+  Schema remains the only validation authority. Regression tests cover protected
+  union branches, private-key references, and safe neighboring properties.
+- [x] Complete the initial adversarial/depth/size/variant corpus, exact manifest
+  and schema REST-byte parity test, and stable generated manifest fixture. The
+  canonical JSON Schema loader now rejects duplicate keys at every depth,
+  invalid UTF-8, and raw documents above the SDK document cap; UI schema
+  composition is bounded to 64 branches and depth 32. Full `make check` passes
+  locally on 2026-10-14. Cross-repository/runtime acceptance remains open below;
+  this SDK-level byte parity gate does not prove multi-replica rollout behavior.
+- [~] Core relays the opaque live manifest, CLI reads only Core Management API,
+  and Studio parses the descriptor from typed CLI results without a Service SDK
+  client. Echo publishes a checked descriptor for its query key, prefix,
+  text/log bounds, response mode and logging switch; Server now publishes a
+  schema-validated descriptor for listener and typed HTTP route settings.
+  Cross-owner adversarial/REST-byte conformance and full runtime acceptance
+  remain open. The reload-runtime child process now constructs its manifest with
+  `NewManifestProvider`; the real SDK REST listener serves the typed
+  `service-configuration-ui/v1` descriptor and schema, asserted in both reload
+  integration suites (101 targeted tests passed on 2026-10-15).
+- [x] 2026-10-13: `GOWORK=off GOFLAGS=-p=1 make check` passes after the initial
+  descriptor implementation (Go lint/tests/build/vet, TypeScript lint/typecheck,
+  19 Vitest files / 229 tests and generated-contract check).
+- [x] 2026-10-13: repeated the complete SDK check after expanding protected-path
+  validation and its regression corpus; lint, Go tests/build/vet, TypeScript
+  checks and all 229 Vitest tests pass.
+- [~] Core/CLI/Studio metadata path is locally connected. Studio now reads live
+  schema through typed CLI→Core before accepting manifest UI hints and blocks
+  renderer edits/Core apply on Project-schema drift; offline Project drafts remain
+  local-only. Studio binds the Core live manifest and schema to the Project's
+  artifact ID/version/digest using authenticated Core status reads before and
+  after metadata retrieval, and repeats the check before apply and after runtime
+  lifecycle actions. Core status carries the authenticated registration's release
+  claim, not cryptographic measurement of executable bytes. Per-replica effective
+  state and the full live runtime editing workflow remain open. Focused Core
+  child-process integration `core/tests/integration/service-live-metadata.test.ts`
+  passed locally on 2026-10-15: Core registered a replica over mTLS, fetched its
+  manifest/schema/identity/readiness from the SDK REST surface, and returned the
+  Core-backed responses through Management API. This verifies Core→SDK, but not
+  the complete CLI→Core→Studio UI path or hosted/released revisions.
+
+This section is the current backlog; older dated SDK reports below are
+historical evidence and remain unchanged. The configuration-UI model exists in
+the local SDK worktree and has not been published. Echo and Server declare
+owner-validated descriptors. Core/CLI relay and Studio rendering are implemented
+locally, with the remaining limitations listed above.
 
 ## Повторная проверка — 2026-10-04
 

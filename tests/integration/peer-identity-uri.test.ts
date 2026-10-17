@@ -21,7 +21,7 @@ describe('URI-only SDK peer identity', () => {
     result = inspectPeerIdentity();
   }, 30000);
 
-  it('accepts a URI-only identity for a Core-to-plugin client', () => {
+  it('accepts a URI-only identity for a Core-to-service client', () => {
     expect(result.uriOnlyIdentityValid).toBe(true);
     expect(result.uriOnlyClientCreated).toBe(true);
   });

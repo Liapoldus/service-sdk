@@ -9,10 +9,10 @@ import (
 
 // ErrInvalidObservabilityConfiguration means the SDK-owned health and metrics
 // surface was not composed from the versioned SDK contract.
-var ErrInvalidObservabilityConfiguration = errors.New("invalid Plugin SDK observability configuration")
+var ErrInvalidObservabilityConfiguration = errors.New("invalid Service SDK observability configuration")
 
 // ObservabilityConfiguration describes the universal SDK endpoints that may be
-// mounted on a plugin's operator-facing listener. The product plugin supplies
+// mounted on a service's operator-facing listener. The product service supplies
 // no handler logic: health and metrics are rendered by the SDK from these
 // contract values and the SDK metrics collector.
 type ObservabilityConfiguration struct {

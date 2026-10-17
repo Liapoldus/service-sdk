@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import directorySchema from "../../infrastructure/assets/plugin-sdk/v2/peer-directory.schema.json";
+import directorySchema from "../../infrastructure/assets/service-sdk/v2/peer-directory.schema.json";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -40,7 +40,7 @@ function withIdentity(overrides: Record<string, unknown>) {
 
 function directory(overrides: Record<string, unknown> = {}) {
   return {
-    contractVersion: "liapoldus.plugin-sdk.peer-directory.v1",
+    contractVersion: "liapoldus.service-sdk.peer-directory.v1",
     generation: "directory-42",
     issuedAt,
     expiresAt,
@@ -103,9 +103,9 @@ function resolvePeer(peerDirectory: unknown, request: unknown) {
   return JSON.parse(output) as { peer: { carrier: string; replicaId: string } };
 }
 
-describe("versioned plugin peer directory", () => {
+describe("versioned service peer directory", () => {
   it("publishes the exact generic DTO contract and bounded carriers", () => {
-    expect(directorySchema.properties.contractVersion.const).toBe("liapoldus.plugin-sdk.peer-directory.v1");
+    expect(directorySchema.properties.contractVersion.const).toBe("liapoldus.service-sdk.peer-directory.v1");
     expect(directorySchema.required).toEqual(["contractVersion", "generation", "issuedAt", "expiresAt", "caller", "links"]);
     expect(directorySchema.$defs.link.properties.placementRule.enum).toEqual(["same-placement", "remote"]);
     expect(directorySchema.$defs.link.properties.carrier.enum).toEqual(["tcp", "quic", "unix", "windows-named-pipe"]);

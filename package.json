@@ -1,5 +1,5 @@
 {
-  "name": "@liapoldus/plugin-sdk-contract-tests",
+  "name": "@liapoldus/service-sdk-contract-tests",
   "private": true,
   "type": "module",
   "scripts": {

@@ -1,5 +1,5 @@
 {
-  "contractVersion": "liapoldus.plugin-sdk.peer-directory-poll.v1",
+  "contractVersion": "liapoldus.service-sdk.peer-directory-poll.v1",
   "problemMediaType": "application/json",
   "directoryMediaType": "application/json",
   "transportSecurity": {
@@ -9,12 +9,12 @@
   },
   "identityBinding": "authenticated-client-certificate-uri-san",
   "identity": {
-    "uriTemplate": "spiffe://liapoldus/plugin/{instanceId}/{replicaId}/{incarnationId}",
+    "uriTemplate": "spiffe://liapoldus/service/{instanceId}/{replicaId}/{incarnationId}",
     "commonNameUsed": false
   },
   "endpoint": {
     "method": "GET",
-    "path": "/internal/v2/plugin-peer-directory"
+    "path": "/internal/v2/service-peer-directory"
   },
   "headers": {
     "request": [
@@ -52,7 +52,7 @@
       "status": 200,
       "mediaType": "application/json",
       "maximumBytes": 1048576,
-      "schema": "https://liapoldus.github.io/spec/plugin-sdk/v2/peer-directory.schema.json",
+      "schema": "https://liapoldus.github.io/spec/service-sdk/v2/peer-directory.schema.json",
       "etagMatches": "quoted-directory-generation",
       "callerMustMatchAuthenticatedIdentity": true
     },

@@ -1,7 +1,7 @@
 package models
 
 // Reload is the Core notification that an immutable generation is available and
-// must become the active plugin configuration. It is a notification, not a
+// must become the active service configuration. It is a notification, not a
 // configuration transfer: it never carries the document.
 type Reload struct {
 	Generation    string `json:"generation"`
@@ -9,7 +9,7 @@ type Reload struct {
 	SchemaVersion string `json:"schemaVersion"`
 }
 
-// ReloadAcknowledgement is returned only after the plugin-owned validator and
+// ReloadAcknowledgement is returned only after the service-owned validator and
 // applier have atomically activated the exact pulled document.
 type ReloadAcknowledgement struct {
 	Generation    string  `json:"generation"`

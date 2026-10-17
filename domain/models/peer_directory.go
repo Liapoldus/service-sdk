@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	PeerDirectoryContractVersion  = "liapoldus.plugin-sdk.peer-directory.v1"
+	PeerDirectoryContractVersion  = "liapoldus.service-sdk.peer-directory.v1"
 	PeerDirectoryMaximumBytes     = 1 << 20
 	PeerDirectoryMaximumLinks     = 256
 	PeerDirectoryMaximumReplicas  = 512

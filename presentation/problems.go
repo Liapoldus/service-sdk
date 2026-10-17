@@ -3,13 +3,13 @@ package presentation
 import (
 	"errors"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
 )
 
 // ErrInvalidContracts is returned when the injected contract cannot produce a
 // conformant handler set. It names no field, path, media type, status or code
 // value, so it can be logged without disclosing the contract.
-var ErrInvalidContracts = errors.New("invalid Plugin SDK contract")
+var ErrInvalidContracts = errors.New("invalid Service SDK contract")
 
 // These are the contract's own logical problem keys. They are the names the
 // contract registers each refusal under; the status and the code a key owns

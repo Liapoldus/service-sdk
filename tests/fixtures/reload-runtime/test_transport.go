@@ -1,6 +1,6 @@
 package main
 
-// Fixture-only transport faults a harness can ask the running plugin surface for.
+// Fixture-only transport faults a harness can ask the running service surface for.
 //
 // This file is a test fixture and is never part of a production package. It can
 // take a request apart after the listener has already accepted it, and it counts
@@ -16,9 +16,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/interfaces"
-	"github.com/Liapoldus/plugin-sdk/v2/infrastructure"
-	"github.com/Liapoldus/plugin-sdk/v2/tests/support/process"
+	"github.com/Liapoldus/service-sdk/v2/domain/interfaces"
+	"github.com/Liapoldus/service-sdk/v2/infrastructure"
+	"github.com/Liapoldus/service-sdk/v2/tests/support/process"
 )
 
 // testScenarioInputs is the read-only state the on-demand scenarios need in order
@@ -27,26 +27,26 @@ import (
 // is observed through the same credentials a real peer would present rather than
 // through a second, easier set.
 type testScenarioInputs struct {
-	contract         infrastructure.HTTPContract
-	clock            interfaces.Clock
-	identities       *testIdentities
-	coreProvider     infrastructure.CredentialsProvider
-	pluginProvider   infrastructure.CredentialsProvider
-	coreRevocation   interfaces.RevocationSource
-	pluginRevocation interfaces.RevocationSource
-	drops            *testDrops
-	connections      *testConnections
-	// pluginAddress and readyPath are the live plugin mutual-TLS listener and one
+	contract          infrastructure.HTTPContract
+	clock             interfaces.Clock
+	identities        *testIdentities
+	coreProvider      infrastructure.CredentialsProvider
+	serviceProvider   infrastructure.CredentialsProvider
+	coreRevocation    interfaces.RevocationSource
+	serviceRevocation interfaces.RevocationSource
+	drops             *testDrops
+	connections       *testConnections
+	// serviceAddress and readyPath are the live service mutual-TLS listener and one
 	// route on it. The close race is measured against that listener rather than
 	// against a surface of its own, so what it reports is the state of the surface
 	// a Core actually talks to.
-	pluginAddress string
-	readyPath     string
+	serviceAddress string
+	readyPath      string
 }
 
 // testScenarios owns the surfaces a harness starts on demand: the rotating
 // credential surface, the loaded surface that is drained and the close-race churn
-// against the running plugin listener. The surfaces are created the first time they
+// against the running service listener. The surfaces are created the first time they
 // are asked for and exist only while a harness is using them.
 type testScenarios struct {
 	inputs testScenarioInputs
@@ -84,11 +84,11 @@ func (scenarios *testScenarios) loadSurface() (*testLoad, error) {
 		scenarios.load = &testLoad{
 			contract:         scenarios.inputs.contract,
 			clock:            scenarios.inputs.clock,
-			serverProvider:   scenarios.inputs.pluginProvider,
+			serverProvider:   scenarios.inputs.serviceProvider,
 			serverPeer:       scenarios.inputs.identities.corePeer,
-			serverRevocation: scenarios.inputs.pluginRevocation,
+			serverRevocation: scenarios.inputs.serviceRevocation,
 			clientProvider:   scenarios.inputs.coreProvider,
-			clientPeer:       scenarios.inputs.identities.pluginPeer,
+			clientPeer:       scenarios.inputs.identities.servicePeer,
 			clientRevocation: scenarios.inputs.coreRevocation,
 		}
 	}
@@ -96,7 +96,7 @@ func (scenarios *testScenarios) loadSurface() (*testLoad, error) {
 }
 
 // churnScenario returns the close-race churn, which needs no listener of its own:
-// it is measured against the plugin surface the fixture is already serving.
+// it is measured against the service surface the fixture is already serving.
 func (scenarios *testScenarios) churnScenario() (*testChurn, error) {
 	scenarios.mutex.Lock()
 	defer scenarios.mutex.Unlock()
@@ -106,7 +106,7 @@ func (scenarios *testScenarios) churnScenario() (*testChurn, error) {
 			infrastructure.MutualTLSClientConfig{
 				// The churn plays the Core replica, because the surface it is
 				// measured against pins the Core replica as its only peer.
-				Peer:       scenarios.inputs.identities.pluginPeer,
+				Peer:       scenarios.inputs.identities.servicePeer,
 				ServerName: testServerName,
 				Revocation: scenarios.inputs.coreRevocation,
 				Clock:      scenarios.inputs.clock,
@@ -117,7 +117,7 @@ func (scenarios *testScenarios) churnScenario() (*testChurn, error) {
 		scenarios.churn = &testChurn{
 			contract:    scenarios.inputs.contract,
 			clock:       scenarios.inputs.clock,
-			address:     scenarios.inputs.pluginAddress,
+			address:     scenarios.inputs.serviceAddress,
 			readyPath:   scenarios.inputs.readyPath,
 			client:      client,
 			connections: scenarios.inputs.connections,
@@ -203,7 +203,7 @@ func (drops *testDrops) serve(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// ServeHTTP is how the switch becomes part of the plugin's handler chain. It is
+// ServeHTTP is how the switch becomes part of the service's handler chain. It is
 // the production handler underneath, so a request the switch passes is handled by
 // exactly the code a surface without a switch would have used.
 func (drops *testDrops) ServeHTTP(w http.ResponseWriter, r *http.Request) {

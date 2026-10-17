@@ -58,7 +58,7 @@ export const fixture = {
   },
   identities: {
     coreReplica: "liapoldus-core-replica",
-    pluginReplica: "liapoldus-plugin-replica",
+    serviceReplica: "liapoldus-service-replica",
   },
   // The credentials the rotation surface is served with, before and after the
   // operator writes new material to disk. They are fixture serials, not contract

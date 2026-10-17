@@ -20,7 +20,7 @@ afterAll(async () => {
 
 async function fixtureBinary(): Promise<string> {
   if (binary) return binary;
-  buildDirectory = await mkdtemp(join(tmpdir(), "plugin-sdk-loopback-health-"));
+  buildDirectory = await mkdtemp(join(tmpdir(), "service-sdk-loopback-health-"));
   binary = join(buildDirectory, "loopback-health");
   await execute("go", ["build", "-o", binary, "./tests/fixtures/loopback-health"], {
     cwd: projectRoot,
@@ -80,10 +80,10 @@ describe("the opt-in loopback plaintext health profile", () => {
     const contract = JSON.parse(await readFile(contractFile, "utf8")) as {
       contractVersion: string;
       transportSecurity: { clientCertificateRequired: boolean };
-      plugin: { endpoints: Record<string, { method: string; path: string }> };
+      service: { endpoints: Record<string, { method: string; path: string }> };
     };
     const profile = JSON.parse(
-      await readFile(join(projectRoot, "infrastructure/assets/plugin-sdk/v2/loopback-plaintext-profile.json"), "utf8"),
+      await readFile(join(projectRoot, "infrastructure/assets/service-sdk/v2/loopback-plaintext-profile.json"), "utf8"),
     ) as {
       enabledByDefault: boolean;
       exposedEndpoint: { httpContractVersion: string; endpointKey: string };
@@ -92,7 +92,7 @@ describe("the opt-in loopback plaintext health profile", () => {
       transport: { remoteBindAllowed: boolean; tlsFailureFallback: boolean };
     };
 
-    expect(contract.contractVersion).toBe("liapoldus.plugin-sdk.http.v2");
+    expect(contract.contractVersion).toBe("liapoldus.service-sdk.http.v2");
     expect(contract.transportSecurity.clientCertificateRequired).toBe(true);
     expect(profile.enabledByDefault).toBe(false);
     expect(profile.exposedEndpoint).toEqual({
@@ -100,7 +100,7 @@ describe("the opt-in loopback plaintext health profile", () => {
       endpointKey: "health",
     });
     expect(profile.excludedEndpointKeys.toSorted()).toEqual(
-      Object.keys(contract.plugin.endpoints).filter((name) => name !== "health").toSorted(),
+      Object.keys(contract.service.endpoints).filter((name) => name !== "health").toSorted(),
     );
     expect(profile.coreEndpointsAlwaysRequireMutualTLS.toSorted()).toEqual(
       ["configPull", "secretGrant.issue", "secretGrant.redemption"].toSorted(),
@@ -134,9 +134,9 @@ describe("the opt-in loopback plaintext health profile", () => {
         ["/_liapoldus/v1/admin-action/forms/delete", "POST"],
         ["/_liapoldus/v1/artifact-stream", "POST"],
         ["/metrics", "GET"],
-        ["/internal/v1/plugin-config/generation-active", "GET"],
-        ["/internal/v1/plugin-secret-grants", "POST"],
-        ["/internal/v1/plugin-secret-grants/handle/redemption", "POST"],
+        ["/internal/v1/service-config/generation-active", "GET"],
+        ["/internal/v1/service-secret-grants", "POST"],
+        ["/internal/v1/service-secret-grants/handle/redemption", "POST"],
       ] as const) {
         const answer = await request(required(fixture.info.healthURL), path, method);
         expect(answer.status, `${method} ${path} must not be exposed in plaintext`).toBe(404);

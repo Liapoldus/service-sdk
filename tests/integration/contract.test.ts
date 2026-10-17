@@ -32,10 +32,10 @@ describe("the versioned HTTP contract asset", () => {
   it("publishes one contract version and one file for it", () => {
     expect(typeof contract.contractVersion).toBe("string");
     expect(contract.contractVersion.length).toBeGreaterThan(0);
-    expect(contractFile).toMatch(/assets[/\\]plugin-sdk[/\\]v2[/\\]http-contract\.json$/);
+    expect(contractFile).toMatch(/assets[/\\]service-sdk[/\\]v2[/\\]http-contract\.json$/);
   });
 
-  it("registers every plugin endpoint once, with a unique method and path", () => {
+  it("registers every service endpoint once, with a unique method and path", () => {
     const pairs = endpointNames.map(
       (name) => `${endpoint(name).method} ${endpoint(name).path}`,
     );
@@ -44,7 +44,7 @@ describe("the versioned HTTP contract asset", () => {
 
     expect(new Set(paths).size).toBe(paths.length);
     expect(new Set(pairs).size).toBe(pairs.length);
-    expect(writes, "the plugin publishes lifecycle, artifact, and admin action write paths").toHaveLength(3);
+    expect(writes, "the service publishes lifecycle, artifact, and admin action write paths").toHaveLength(3);
     for (const [index, name] of endpointNames.entries()) {
       expect(pairs[index], `method of ${name}`).toMatch(
         new RegExp(`^${httpMethods.join("|")} /`),
@@ -54,8 +54,8 @@ describe("the versioned HTTP contract asset", () => {
   });
 
   it("publishes the bounded artifact stream endpoint and envelope contract", () => {
-    const endpoint = contract.plugin.endpoints.artifactStream;
-    const stream = contract.plugin.artifactStream;
+    const endpoint = contract.service.endpoints.artifactStream;
+    const stream = contract.service.artifactStream;
 
     expect(endpoint).toEqual({ method: "POST", path: (expect.stringMatching(/^\/_liapoldus\/v1\//) as unknown) });
     expect(stream).toMatchObject({
@@ -91,20 +91,20 @@ describe("the versioned HTTP contract asset", () => {
   });
 
   it("publishes bounded, generic admin surface discovery and action contracts", () => {
-    expect(contract.plugin.endpoints.adminSurface).toEqual({
+    expect(contract.service.endpoints.adminSurface).toEqual({
       method: "GET",
       path: "/_liapoldus/v1/admin-surface",
     });
-    expect(contract.plugin.endpoints.adminAction).toEqual({
+    expect(contract.service.endpoints.adminAction).toEqual({
       method: "POST",
       path: "/_liapoldus/v1/admin-action/{page}/{action}",
     });
-    expect(contract.plugin.adminSurface).toMatchObject({
+    expect(contract.service.adminSurface).toMatchObject({
       mediaType: mediaType.json,
       maximumBytes: 262144,
       digestAlgorithm: "SHA-256",
     });
-    expect(contract.plugin.adminAction).toMatchObject({
+    expect(contract.service.adminAction).toMatchObject({
       mediaType: mediaType.json,
       maximumRequestBytes: 1048576,
       maximumResponseBytes: 1048576,

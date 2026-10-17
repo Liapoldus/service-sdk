@@ -13,22 +13,22 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/interfaces"
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/domain/interfaces"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
 )
 
 var (
 	// ErrInvalidLogger rejects a logger configuration that cannot meet the
 	// contract's structured-output rules, for example an absent sink or a level
 	// outside the contract vocabulary.
-	ErrInvalidLogger = errors.New("invalid Plugin SDK logger configuration")
+	ErrInvalidLogger = errors.New("invalid Service SDK logger configuration")
 	// ErrInvalidObserver rejects an observer configuration that cannot produce
 	// contract-conformant metrics.
-	ErrInvalidObserver = errors.New("invalid Plugin SDK observer configuration")
+	ErrInvalidObserver = errors.New("invalid Service SDK observer configuration")
 	// ErrObserverContractIncomplete reports that the contract lacks a metric name
 	// or label the collector is required to emit. Metrics are never invented, so a
 	// missing name is an error rather than a fallback string.
-	ErrObserverContractIncomplete = errors.New("incomplete Plugin SDK observer contract")
+	ErrObserverContractIncomplete = errors.New("incomplete Service SDK observer contract")
 )
 
 // JSONLogger writes newline-delimited JSON log records to an operator-owned
@@ -195,7 +195,7 @@ func (logger *JSONLogger) redacts(key string) bool {
 type ObserverCollector interface {
 	interfaces.LifecycleObserver
 
-	// SetReady publishes whether the plugin is currently able to serve.
+	// SetReady publishes whether the service is currently able to serve.
 	SetReady(ready bool)
 	// RecordConfigPullFailure counts one failure to pull a configuration
 	// generation from Core. The reason is deliberately not a label: a label
@@ -263,10 +263,10 @@ const (
 // kind are all refused. Nothing is defaulted and nothing is invented, so a
 // published series always corresponds to a documented lifecycle operation.
 func NewObserverPrometheusCollector(contract HTTPContract) (*ObserverPrometheusCollector, error) {
-	metrics := contract.Plugin.Responses.Metrics
+	metrics := contract.Service.Responses.Metrics
 	if metrics.ReadyMetricName == "" || metrics.LifecycleCounterName == "" ||
 		metrics.PullFailureCounterName == "" || metrics.LifecycleCounterKindLabel == "" ||
-		metrics.LifecycleCounterOutcomeLabel == "" || contract.Plugin.Responses.ContentTypes.Metrics == "" {
+		metrics.LifecycleCounterOutcomeLabel == "" || contract.Service.Responses.ContentTypes.Metrics == "" {
 		return nil, ErrObserverContractIncomplete
 	}
 	permitted := make(map[string]map[models.Outcome]struct{}, 3)
@@ -295,7 +295,7 @@ func NewObserverPrometheusCollector(contract HTTPContract) (*ObserverPrometheusC
 	}, nil
 }
 
-// SetReady publishes the readiness gauge. A plugin that has never evaluated its
+// SetReady publishes the readiness gauge. A service that has never evaluated its
 // own readiness is exposed as 0 rather than omitted, so a scrape can never read
 // the absence of a sample as readiness.
 func (collector *ObserverPrometheusCollector) SetReady(ready bool) {
@@ -342,7 +342,7 @@ func (collector *ObserverPrometheusCollector) ContentType() string {
 	if collector == nil {
 		return ""
 	}
-	return collector.contract.Plugin.Responses.ContentTypes.Metrics
+	return collector.contract.Service.Responses.ContentTypes.Metrics
 }
 
 // WriteText renders the metrics. Output is sorted by kind then outcome, so two
@@ -353,7 +353,7 @@ func (collector *ObserverPrometheusCollector) WriteText(writer io.Writer) error 
 		return ErrInvalidObserver
 	}
 	snapshot := collector.snapshot()
-	metrics := collector.contract.Plugin.Responses.Metrics
+	metrics := collector.contract.Service.Responses.Metrics
 	var buffer bytes.Buffer
 
 	buffer.WriteString("# HELP " + metrics.ReadyMetricName + " " + observerSingleLine(metrics.ReadyMetricHelp) + "\n")

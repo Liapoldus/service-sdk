@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import contract from "../../infrastructure/assets/plugin-sdk/v2/replica-lifecycle.json";
+import contract from "../../infrastructure/assets/service-sdk/v2/replica-lifecycle.json";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -18,6 +18,11 @@ type LifecycleResult = {
   invalidCompatibility: unknown;
   releaseCohortCompatibility: unknown;
   deregistered: unknown;
+  coreRestartLeaseRecovery: {
+    sameIncarnation: boolean;
+    readinessRestored: boolean;
+    registerCalls: number;
+  };
 };
 
 function runLifecycle() {
@@ -37,7 +42,7 @@ describe("versioned replica registration and lease lifecycle", () => {
   }, 30000);
 
   it("publishes the generic mTLS registration contract and lifecycle bounds", () => {
-    expect(contract.contractVersion).toBe("liapoldus.plugin-sdk.replica-lifecycle.v2");
+    expect(contract.contractVersion).toBe("liapoldus.service-sdk.replica-lifecycle.v2");
     expect(contract.lease).toEqual({ ttlSeconds: 30, renewIntervalSeconds: 10 });
     expect(contract.registrationSemantics).toMatchObject({
       activeDuplicate: "same-identity-and-immutable-metadata-renews-lease",
@@ -119,6 +124,14 @@ describe("versioned replica registration and lease lifecycle", () => {
       unknownDeregistration: { error: "replica_not_registered" },
       deregisteredClientC: { deregistered: true },
       repeatedDeregistration: { error: "replica_not_registered" },
+    });
+  });
+
+  it("re-registers the same mTLS replica after Core loses its live directory", () => {
+    expect(lifecycle.coreRestartLeaseRecovery).toEqual({
+      sameIncarnation: true,
+      readinessRestored: true,
+      registerCalls: 2,
     });
   });
 

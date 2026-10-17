@@ -17,7 +17,7 @@ async function control(runtime: Runtime, path: string, body: unknown = {}): Prom
   return { status: response.status, ...result };
 }
 
-describe("generic plugin Admin Surface REST", () => {
+describe("generic service Admin Surface REST", () => {
   it("reports a safe static diagnosis when the injected descriptor digest contract is incomplete", async () => {
     const runtime = await Runtime.start();
     try {
@@ -25,14 +25,14 @@ describe("generic plugin Admin Surface REST", () => {
 
       expect(result.status).toBe(200);
       expect(result.rejected).toBe(true);
-      expect(result.diagnostic).toBe("invalid Plugin SDK contract: admin surface digest algorithm");
+      expect(result.diagnostic).toBe("invalid Service SDK contract: admin surface digest algorithm");
       expect(String(result.diagnostic)).not.toContain("secret");
     } finally {
       await runtime.stop();
     }
   }, 60_000);
 
-  it("returns the exact plugin-owned descriptor and a digest of its original bytes over mTLS", async () => {
+  it("returns the exact service-owned descriptor and a digest of its original bytes over mTLS", async () => {
     const runtime = await Runtime.start();
     try {
       const result = await control(runtime, "/control/admin-surface");
@@ -47,7 +47,7 @@ describe("generic plugin Admin Surface REST", () => {
     }
   }, 60_000);
 
-  it("forwards typed context and exact JSON bytes once, preserving plugin status and body", async () => {
+  it("forwards typed context and exact JSON bytes once, preserving service status and body", async () => {
     const runtime = await Runtime.start();
     try {
       const result = await control(runtime, "/control/admin-action", { mode: "normal" });

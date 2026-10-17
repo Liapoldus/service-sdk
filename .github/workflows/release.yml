@@ -3,8 +3,7 @@ name: release
 on:
   push:
     tags:
-      - "plugin-sdk-v2.*"
-      - "v2.*"
+      - "service-sdk-v2.*"
 
 permissions:
   contents: write
@@ -23,16 +22,16 @@ jobs:
           go-version-file: go.mod
       - name: Verify module and tests
         run: |
-          test "$(sed -n '1p' go.mod)" = "module github.com/Liapoldus/plugin-sdk/v2"
+          test "$(sed -n '1p' go.mod)" = "module github.com/Liapoldus/service-sdk/v2"
           go test ./...
           go vet ./...
       - name: Package source artifact
         env:
           VERSION: ${{ github.ref_name }}
         run: |
-          version="${VERSION#plugin-sdk-}"
-          artifact="plugin-sdk-${version}.tar.gz"
-          git archive --format=tar --prefix="plugin-sdk-${version}/" "${GITHUB_SHA}" | gzip -n > "${artifact}"
+          version="${VERSION#service-sdk-}"
+          artifact="service-sdk-${version}.tar.gz"
+          git archive --format=tar --prefix="service-sdk-${version}/" "${GITHUB_SHA}" | gzip -n > "${artifact}"
           sha256sum "${artifact}" > "${artifact}.sha256"
       - name: Generate SPDX SBOM
         uses: anchore/sbom-action@v0
@@ -46,20 +45,20 @@ jobs:
         env:
           VERSION: ${{ github.ref_name }}
         run: |
-          version="${VERSION#plugin-sdk-}"
-          artifact="plugin-sdk-${version}.tar.gz"
+          version="${VERSION#service-sdk-}"
+          artifact="service-sdk-${version}.tar.gz"
           sbom="sdk-${VERSION}.sbom.spdx.json"
           cosign sign-blob --yes --bundle "${artifact}.sigstore.json" "${artifact}"
           cosign sign-blob --yes --bundle "${sbom}.sigstore.json" "${sbom}"
       - name: Attest release provenance
         uses: actions/attest-build-provenance@v2
         with:
-          subject-path: plugin-sdk-*.tar.gz
+          subject-path: service-sdk-*.tar.gz
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
           files: |
-            plugin-sdk-*
+            service-sdk-*
             sdk-${{ github.ref_name }}.sbom.spdx.json
             sdk-${{ github.ref_name }}.sbom.spdx.json.sigstore.json

@@ -5,8 +5,8 @@ import (
 	"errors"
 	"sync/atomic"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/interfaces"
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/domain/interfaces"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
 )
 
 // InProcessConfigurationSnapshot remains available from infrastructure as the
@@ -16,7 +16,7 @@ type InProcessConfigurationSnapshot = models.InProcessConfigurationSnapshot
 var (
 	// ErrInvalidInProcessSnapshot means that the composition root tried to
 	// publish a snapshot that cannot be exposed as an exact Core generation.
-	ErrInvalidInProcessSnapshot = errors.New("invalid Plugin SDK in-process configuration snapshot")
+	ErrInvalidInProcessSnapshot = errors.New("invalid Service SDK in-process configuration snapshot")
 	// ErrInProcessGenerationUnavailable is deliberately opaque. The lifecycle
 	// application layer classifies it as a failed Core pull and never receives a
 	// path, payload or mutable store detail.
@@ -31,7 +31,7 @@ type inProcessConfigurationSnapshot struct {
 
 // InProcessConfigurationSource implements the domain ConfigurationSource port
 // without opening a listener or reading Core's durable store. The source is bound to one
-// plugin instance at construction and every pull is restricted to the latest
+// service instance at construction and every pull is restricted to the latest
 // atomically published active/previous snapshot for that instance.
 type InProcessConfigurationSource struct {
 	instanceID string
@@ -52,7 +52,7 @@ func NewInProcessConfigurationSource(snapshot models.InProcessConfigurationSnaps
 
 // NewInProcessConfigurationSourceForInstance creates an initially unavailable
 // source for a trusted composition root. Core publishes the retained active /
-// previous pair after Core's durable snapshot is ready; a plugin cannot observe a
+// previous pair after Core's durable snapshot is ready; a service cannot observe a
 // partial bootstrap state.
 func NewInProcessConfigurationSourceForInstance(instanceID string) (*InProcessConfigurationSource, error) {
 	if !models.ValidInstanceID(instanceID) {

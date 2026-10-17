@@ -1,18 +1,18 @@
 import { existsSync } from "node:fs";
-import contract from "../../infrastructure/assets/plugin-sdk/v2/peer-directory-poll.json";
+import contract from "../../infrastructure/assets/service-sdk/v2/peer-directory-poll.json";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const root = resolve(fileURLToPath(new URL("../..", import.meta.url)));
-const contractPath = resolve(root, "infrastructure/assets/plugin-sdk/v2/peer-directory-poll.json");
+const contractPath = resolve(root, "infrastructure/assets/service-sdk/v2/peer-directory-poll.json");
 
 describe("authenticated peer-directory polling contract", () => {
   it("fixes conditional long-poll, bounded wait, caller binding and response semantics", () => {
     expect(existsSync(contractPath)).toBe(true);
 
-    expect(contract.contractVersion).toBe("liapoldus.plugin-sdk.peer-directory-poll.v1");
-    expect(contract.endpoint).toEqual({ method: "GET", path: "/internal/v2/plugin-peer-directory" });
+    expect(contract.contractVersion).toBe("liapoldus.service-sdk.peer-directory-poll.v1");
+    expect(contract.endpoint).toEqual({ method: "GET", path: "/internal/v2/service-peer-directory" });
     expect(contract.identityBinding).toBe("authenticated-client-certificate-uri-san");
     expect(contract.transportSecurity).toEqual({
       tlsRequired: true,
@@ -20,7 +20,7 @@ describe("authenticated peer-directory polling contract", () => {
       certificateIdentity: "spiffe-uri-template",
     });
     expect(contract.identity).toEqual({
-      uriTemplate: "spiffe://liapoldus/plugin/{instanceId}/{replicaId}/{incarnationId}",
+      uriTemplate: "spiffe://liapoldus/service/{instanceId}/{replicaId}/{incarnationId}",
       commonNameUsed: false,
     });
     expect(contract.poll).toMatchObject({
@@ -45,7 +45,7 @@ describe("authenticated peer-directory polling contract", () => {
     expect(contract.responses.directory).toMatchObject({
       status: 200,
       maximumBytes: 1_048_576,
-      schema: "https://liapoldus.github.io/spec/plugin-sdk/v2/peer-directory.schema.json",
+      schema: "https://liapoldus.github.io/spec/service-sdk/v2/peer-directory.schema.json",
     });
     expect(contract.responses.unchanged).toEqual({
       status: 304,

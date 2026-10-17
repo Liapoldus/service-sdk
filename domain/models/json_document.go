@@ -8,7 +8,7 @@ import (
 )
 
 // ValidJSONObject accepts exactly one JSON object and rejects duplicate keys at
-// every nesting level, so Core, the plugin validator and the plugin applier can
+// every nesting level, so Core, the service validator and the service applier can
 // never disagree about the meaning of the same bytes.
 func ValidJSONObject(contents []byte) bool {
 	decoder := json.NewDecoder(bytes.NewReader(contents))

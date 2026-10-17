@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
 )
 
 func TestReplicaIdentityComesFromExactClientCertificateURI(t *testing.T) {
@@ -45,7 +45,7 @@ func TestReplicaIdentityRejectsCertificateForAnotherReplica(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := ReplicaIdentityFromClientCertificate(contract, &x509.Certificate{URIs: []*url.URL{parsed}}, "server", "server", "local"); err == nil {
-		t.Fatal("expected mismatched plugin identity to be rejected")
+		t.Fatal("expected mismatched service identity to be rejected")
 	}
 }
 
@@ -54,9 +54,29 @@ func TestReplicaIdentityRejectsAmbiguousCertificateURIs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	first, _ := url.Parse("spiffe://liapoldus/plugin/server/server/inc-1")
-	second, _ := url.Parse("spiffe://liapoldus/plugin/server/server/inc-2")
+	first, err := url.Parse("spiffe://liapoldus/service/server/server/inc-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := url.Parse("spiffe://liapoldus/service/server/server/inc-2")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if _, err := ReplicaIdentityFromClientCertificate(contract, &x509.Certificate{URIs: []*url.URL{first, second}}, "server", "server", "local"); err == nil {
 		t.Fatal("expected ambiguous certificate identity to be rejected")
+	}
+}
+
+func TestReplicaIdentityRejectsRetiredRuntimeNamespace(t *testing.T) {
+	contract, err := LoadReplicaLifecycleContract()
+	if err != nil {
+		t.Fatal(err)
+	}
+	retired, err := url.Parse("spiffe://liapoldus/plugin/server/server/inc-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ReplicaIdentityFromClientCertificate(contract, &x509.Certificate{URIs: []*url.URL{retired}}, "server", "server", "local"); err == nil {
+		t.Fatal("accepted retired runtime namespace")
 	}
 }

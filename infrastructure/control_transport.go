@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
 )
 
 // The SDK owns no endpoint path, limit, status, code, deadline or media type of
@@ -35,30 +35,30 @@ var (
 	// ErrInvalidControlCall rejects a control-plane client that was handed a
 	// configuration which could never produce a safe call. It names no endpoint,
 	// address, path or value.
-	ErrInvalidControlCall = errors.New("invalid Plugin SDK control-plane client configuration")
+	ErrInvalidControlCall = errors.New("invalid Service SDK control-plane client configuration")
 	// ErrControlPlaneUnusable reports a response the SDK could not interpret as
 	// the document the contract describes. It is deliberately unattributed: an
 	// unusable answer is the SDK's own classification and never borrows a
 	// contract outcome the peer did not publish.
-	ErrControlPlaneUnusable = errors.New("unusable Plugin SDK control-plane response")
+	ErrControlPlaneUnusable = errors.New("unusable Service SDK control-plane response")
 	// ErrControlRequestRefused reports a peer that answered with a published
 	// contract problem.
-	ErrControlRequestRefused = errors.New("refused Plugin SDK control-plane request")
+	ErrControlRequestRefused = errors.New("refused Service SDK control-plane request")
 	// ErrControlTransportFailed reports a call that produced no usable response
 	// at all: a refused handshake, a reset connection or a lost peer.
-	ErrControlTransportFailed = errors.New("unanswered Plugin SDK control-plane call")
+	ErrControlTransportFailed = errors.New("unanswered Service SDK control-plane call")
 	// ErrControlResponseOversized reports a body larger than its contract limit.
-	ErrControlResponseOversized = errors.New("oversized Plugin SDK control-plane response")
+	ErrControlResponseOversized = errors.New("oversized Service SDK control-plane response")
 	// ErrControlRequestOversized reports a request body larger than its contract
 	// limit. The SDK never sends it, so a caller learns its own input was
 	// unusable rather than discovering it from a peer.
-	ErrControlRequestOversized = errors.New("oversized Plugin SDK control-plane request")
+	ErrControlRequestOversized = errors.New("oversized Service SDK control-plane request")
 	// ErrControlMediaType reports a response media type the contract does not
 	// allow for that document.
-	ErrControlMediaType = errors.New("unusable Plugin SDK control-plane response media type")
+	ErrControlMediaType = errors.New("unusable Service SDK control-plane response media type")
 	// ErrControlDocument reports a body that is not exactly the single JSON
 	// object the contract describes.
-	ErrControlDocument = errors.New("unusable Plugin SDK control-plane document")
+	ErrControlDocument = errors.New("unusable Service SDK control-plane document")
 )
 
 // ControlTransport performs one control-plane request.
@@ -85,9 +85,9 @@ type controlPlaneError struct {
 
 func (failure *controlPlaneError) Error() string {
 	if failure.outcome != "" {
-		return "Plugin SDK control-plane " + string(failure.kind) + " call refused: " + string(failure.outcome)
+		return "Service SDK control-plane " + string(failure.kind) + " call refused: " + string(failure.outcome)
 	}
-	return "Plugin SDK control-plane " + string(failure.kind) + " call produced no usable result"
+	return "Service SDK control-plane " + string(failure.kind) + " call produced no usable result"
 }
 
 func (failure *controlPlaneError) Unwrap() error {

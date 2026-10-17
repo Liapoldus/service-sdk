@@ -1,7 +1,7 @@
 sequenceDiagram
   participant C as Management client
   participant G as Core Admin API
-  participant P as Plugin instance
+  participant P as Service instance
   C->>G: GET admin/surface
   G->>G: authorize instance + admin.surface.get
   G->>P: capability admin.surface.get

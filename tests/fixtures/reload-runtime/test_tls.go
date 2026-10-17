@@ -3,7 +3,7 @@ package main
 // Fixture-only PKI for the reload runtime.
 //
 // This file is a test fixture and is never part of a production package. It
-// generates one throwaway authority, one Core replica keypair, one plugin
+// generates one throwaway authority, one Core replica keypair, one service
 // replica keypair and one empty certificate revocation list on every start, so
 // the fixture never reads key material from a file, an environment variable or a
 // process argument. Nothing here is trusted outside this process and nothing
@@ -23,19 +23,19 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/interfaces"
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
-	"github.com/Liapoldus/plugin-sdk/v2/infrastructure"
+	"github.com/Liapoldus/service-sdk/v2/domain/interfaces"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/infrastructure"
 )
 
 var errTestPKI = errors.New("test PKI generation failed")
 
 const (
-	// testCoreCommonName and testPluginCommonName are the per-replica identities
+	// testCoreCommonName and testServiceCommonName are the per-replica identities
 	// the two roles of this fixture present. They are fixture inputs to the
 	// production peer authorizer, not contract values.
-	testCoreCommonName   = "liapoldus-core-replica"
-	testPluginCommonName = "liapoldus-plugin-replica"
+	testCoreCommonName    = "liapoldus-core-replica"
+	testServiceCommonName = "liapoldus-service-replica"
 	// testServerName is the name the fixture's own leaf certificates carry, so a
 	// dial address of 127.0.0.1 still passes the contract hostname check.
 	testServerName = "localhost"
@@ -56,9 +56,9 @@ func (testClock) Now() time.Time { return time.Now() }
 // startup probes offer to them, and the authority that issues every leaf here.
 type testIdentities struct {
 	corePeer     models.PeerIdentity
-	pluginPeer   models.PeerIdentity
+	servicePeer  models.PeerIdentity
 	core         infrastructure.CredentialsMaterial
-	plugin       infrastructure.CredentialsMaterial
+	service      infrastructure.CredentialsMaterial
 	revoked      infrastructure.CredentialsMaterial
 	impostor     infrastructure.CredentialsMaterial
 	expired      infrastructure.CredentialsMaterial
@@ -100,10 +100,10 @@ const (
 //
 // The Core replica identity carries exactly one URI, taken from the contract's
 // own trust-domain prefix, so the production peer authorizer can apply its URI
-// rule without the fixture spelling a trust domain of its own. The plugin
+// rule without the fixture spelling a trust domain of its own. The service
 // identity deliberately carries no URI: the contract registers a Core replica
-// prefix, and a plugin URI would have to either claim that prefix or fail the
-// authorizer, so the plugin is identified by its unique common name alone.
+// prefix, and a service URI would have to either claim that prefix or fail the
+// authorizer, so the service is identified by its unique common name alone.
 func newTestIdentities(contract infrastructure.HTTPContract) (*testIdentities, error) {
 	clock := testClock{}
 	now := clock.Now()
@@ -114,7 +114,7 @@ func newTestIdentities(contract infrastructure.HTTPContract) (*testIdentities, e
 	}
 	authorityTemplate := &x509.Certificate{
 		SerialNumber:          big.NewInt(1),
-		Subject:               pkix.Name{CommonName: "liapoldus-plugin-sdk-fixture-authority"},
+		Subject:               pkix.Name{CommonName: "liapoldus-service-sdk-fixture-authority"},
 		NotBefore:             now.Add(-testRevocationBackdate),
 		NotAfter:              now.Add(testCertificateValidity),
 		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageCRLSign | x509.KeyUsageDigitalSignature,
@@ -142,7 +142,7 @@ func newTestIdentities(contract infrastructure.HTTPContract) (*testIdentities, e
 			CommonName:                testCoreCommonName,
 			UniformResourceIdentifier: coreURI,
 		},
-		pluginPeer: models.PeerIdentity{CommonName: testPluginCommonName},
+		servicePeer: models.PeerIdentity{CommonName: testServiceCommonName},
 	}
 
 	coreCoreURI, err := url.Parse(coreURI)
@@ -195,12 +195,12 @@ func newTestIdentities(contract infrastructure.HTTPContract) (*testIdentities, e
 	if err != nil {
 		return nil, err
 	}
-	pluginServer, err := testIssueLeaf(4, testPluginCommonName, nil,
+	serviceServer, err := testIssueLeaf(4, testServiceCommonName, nil,
 		[]x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}, now, authority, authorityKey)
 	if err != nil {
 		return nil, err
 	}
-	pluginClient, err := testIssueLeaf(5, testPluginCommonName, nil,
+	serviceClient, err := testIssueLeaf(5, testServiceCommonName, nil,
 		[]x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}, now, authority, authorityKey)
 	if err != nil {
 		return nil, err
@@ -213,12 +213,12 @@ func newTestIdentities(contract infrastructure.HTTPContract) (*testIdentities, e
 		ClientCertificatePEM: coreClient.certificate,
 		ClientKeyPEM:         coreClient.key,
 	}
-	identities.plugin = infrastructure.CredentialsMaterial{
+	identities.service = infrastructure.CredentialsMaterial{
 		CABundle:             authorityPEM,
-		ServerCertificatePEM: pluginServer.certificate,
-		ServerKeyPEM:         pluginServer.key,
-		ClientCertificatePEM: pluginClient.certificate,
-		ClientKeyPEM:         pluginClient.key,
+		ServerCertificatePEM: serviceServer.certificate,
+		ServerKeyPEM:         serviceServer.key,
+		ClientCertificatePEM: serviceClient.certificate,
+		ClientKeyPEM:         serviceClient.key,
 	}
 	identities.revoked = infrastructure.CredentialsMaterial{
 		CABundle:             authorityPEM,

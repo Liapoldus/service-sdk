@@ -1,7 +1,7 @@
 package models
 
 // ReplicaIdentity is the unique per-replica identity of one manually started
-// plugin process. Core registers the same instanceId/replicaId pair together
+// service process. Core registers the same instanceId/replicaId pair together
 // with the REST endpoint and the expected peer identity.
 type ReplicaIdentity struct {
 	InstanceID string `json:"instanceId"`

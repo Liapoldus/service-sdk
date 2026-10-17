@@ -11,15 +11,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
 )
 
 var (
-	ErrInvalidReplicaLifecycleClient = errors.New("invalid Plugin SDK replica lifecycle client")
-	ErrReplicaLifecycleUnavailable   = errors.New("plugin SDK Core replica lifecycle unavailable")
+	ErrInvalidReplicaLifecycleClient = errors.New("invalid Service SDK replica lifecycle client")
+	ErrReplicaLifecycleUnavailable   = errors.New("service SDK Core replica lifecycle unavailable")
 )
 
-// ReplicaLifecycleClient is the plugin-to-Core mTLS client for one immutable
+// ReplicaLifecycleClient is the service-to-Core mTLS client for one immutable
 // replica identity. It performs one call per method and never retries or
 // replays a lifecycle request.
 type ReplicaLifecycleClient struct {
@@ -30,7 +30,7 @@ type ReplicaLifecycleClient struct {
 	identityURI string
 }
 
-// NewReplicaLifecycleClient binds a plugin-to-Core client to the one replica
+// NewReplicaLifecycleClient binds a service-to-Core client to the one replica
 // identity in its client certificate. Registration payloads with a different
 // instance, replica, incarnation or placement are refused locally.
 func NewReplicaLifecycleClient(contract ReplicaLifecycleContract, baseURL string, transport *MutualTLSClient, identity models.PeerReplicaID) (*ReplicaLifecycleClient, error) {

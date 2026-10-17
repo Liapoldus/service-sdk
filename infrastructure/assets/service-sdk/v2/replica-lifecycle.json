@@ -1,5 +1,5 @@
 {
-  "contractVersion": "liapoldus.plugin-sdk.replica-lifecycle.v2",
+  "contractVersion": "liapoldus.service-sdk.replica-lifecycle.v2",
   "problemMediaType": "application/json",
   "transportSecurity": {
     "tlsRequired": true,
@@ -7,7 +7,7 @@
     "certificateIdentity": "spiffe-uri-template"
   },
   "identity": {
-    "uriTemplate": "spiffe://liapoldus/plugin/{instanceId}/{replicaId}/{incarnationId}",
+    "uriTemplate": "spiffe://liapoldus/service/{instanceId}/{replicaId}/{incarnationId}",
     "commonNameUsed": false
   },
   "lease": {
@@ -26,15 +26,15 @@
   "endpoints": {
     "deregister": {
       "method": "POST",
-      "path": "/internal/v2/plugin-replicas/deregister"
+      "path": "/internal/v2/service-replicas/deregister"
     },
     "register": {
       "method": "POST",
-      "path": "/internal/v2/plugin-replicas/register"
+      "path": "/internal/v2/service-replicas/register"
     },
     "renew": {
       "method": "POST",
-      "path": "/internal/v2/plugin-replicas/renew"
+      "path": "/internal/v2/service-replicas/renew"
     }
   },
   "requests": {

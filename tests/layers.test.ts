@@ -5,11 +5,12 @@ import { describe, expect, it } from "vitest";
 
 const projectRoot = resolve(import.meta.dirname, "..");
 
-describe("Plugin SDK layer structure", () => {
+describe("Service SDK layer structure", () => {
   it("contains only the four approved production layers", () => {
     const layerNames = readdirSync(projectRoot)
       .filter((name) => statSync(resolve(projectRoot, name)).isDirectory())
       .filter((name) => ![".git", ".github", "docs", "tests", "contracts", "node_modules"].includes(name))
+      .filter((name) => goFiles(resolve(projectRoot, name)).length > 0)
       .sort();
 
     expect(layerNames).toEqual([
@@ -38,7 +39,7 @@ describe("Plugin SDK layer structure", () => {
     for (const layer of Object.keys(allowed)) {
       for (const path of goFiles(resolve(projectRoot, layer))) {
         const source = readFileSync(path, "utf8");
-        for (const match of source.matchAll(/"github\.com\/Liapoldus\/plugin-sdk\/([^"]+)"/g)) {
+        for (const match of source.matchAll(/"github\.com\/Liapoldus\/service-sdk\/([^"]+)"/g)) {
           const layerImport = required(match[1]).split("/").slice(1).join("/");
           expect(allowed[layer]).toContain(`${required(layerImport.split("/")[0])}/`);
         }

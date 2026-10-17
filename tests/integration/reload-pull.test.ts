@@ -114,7 +114,7 @@ type CoreRequest = {
 };
 
 // A pull answer also carries the response header set, because the contract names
-// headers the plugin surface never publishes.
+// headers the service surface never publishes.
 type CoreAnswer = Answer & { headers: Record<string, string> };
 
 // coreRequest performs one control-plane call over mutual TLS with the default
@@ -181,13 +181,13 @@ function controlHeader(answer: CoreAnswer, name: string): string {
   return "";
 }
 
-describe("the routes the plugin surface publishes", () => {
+describe("the routes the service surface publishes", () => {
   it("registers exactly the endpoints the contract names, with no others", () => {
     const registered = endpointNames.map((name) => `${method(name)} ${path(name)}`);
 
     expect(new Set(registered).size).toBe(registered.length);
     expect(registered).toEqual(
-      Object.entries(contract.plugin.endpoints).map(
+      Object.entries(contract.service.endpoints).map(
         ([, entry]) => `${entry.method} ${entry.path}`,
       ),
     );
@@ -206,7 +206,7 @@ describe("the routes the plugin surface publishes", () => {
       mediaType.reloadRequest,
     );
 
-    expect(path("reload")).toBe(contract.plugin.endpoints.reload.path);
+    expect(path("reload")).toBe(contract.service.endpoints.reload.path);
     expect(answer.status).toBe(statusOfOutcome("unknownGeneration"));
   });
 
@@ -234,7 +234,7 @@ describe("the routes the plugin surface publishes", () => {
 
   for (const candidate of unregisteredMethods) {
     it(`refuses ${candidate} on the reload endpoint`, async () => {
-      const answer = await runtime.send(runtime.pluginURL, path("reload"), {
+      const answer = await runtime.send(runtime.serviceURL, path("reload"), {
         method: candidate,
         headers: { "content-type": mediaType.reloadRequest },
         body: JSON.stringify(active),
@@ -266,7 +266,7 @@ describe("the routes the plugin surface publishes", () => {
     }
   });
 
-  it("publishes no process control, no plugin-side rollback and no test control route", async () => {
+  it("publishes no process control, no service-side rollback and no test control route", async () => {
     const absent = [
       "/_liapoldus/v1/shutdown",
       "/_liapoldus/v1/restart",
@@ -437,7 +437,7 @@ describe("the reload request the SDK will accept", () => {
   });
 
   it("refuses a reload that announces no media type at all", async () => {
-    const answer = await runtime.send(runtime.pluginURL, path("reload"), {
+    const answer = await runtime.send(runtime.serviceURL, path("reload"), {
       method: "POST",
       body: JSON.stringify(active),
     });
@@ -461,6 +461,17 @@ describe("the reload request the SDK will accept", () => {
 });
 
 describe("the control plane the SDK pulls from", () => {
+  it("does not serve retired configuration and secret-grant paths", async () => {
+    for (const [route, method] of [
+      [`/internal/v1/plugin-config/${active.generation}`, "GET"],
+      ["/internal/v1/plugin-secret-grants", "POST"],
+      ["/internal/v1/plugin-secret-grants/retired/redemption", "POST"],
+    ]) {
+      const answer = await coreRequest(required(route), { method: required(method) });
+      expect(answer.status).toBe(404);
+    }
+  });
+
   it("names the pull path the contract declares and percent-encodes the generation", () => {
     expect(contract.core.configPull.pathTemplate).toContain("{generation}");
     expect(pullPath(active.generation)).toBe(
@@ -567,7 +578,7 @@ describe("the control plane the SDK pulls from", () => {
 
     expect(reload.status).toBe(okStatus);
     expect(Object.keys(reload.body).sort()).toEqual(
-      [...contract.plugin.reloadAcknowledgement.required].sort(),
+      [...contract.service.reloadAcknowledgement.required].sort(),
     );
     expect(reload.body[fixture.keys.outcome]).toBe(applied);
     expect(reload.body[fixture.keys.applied]).toBe(true);
@@ -616,7 +627,7 @@ describe("the control plane the SDK pulls from", () => {
     expect(refused.body[fixture.keys.applied]).toBe(false);
   });
 
-  it("refuses a document Core announced under a schema version the plugin does not own", async () => {
+  it("refuses a document Core announced under a schema version the service does not own", async () => {
     const generation = "generation-announced-schema";
     await runtime.publish({
       generation,
@@ -697,7 +708,7 @@ describe("the reload status and code each contract outcome owns", () => {
   // reachable at all.
   const malformedDocument = '{"replica":"fixture","enabled":true';
 
-  // Every case below is observed on the plugin's own mutual-TLS surface, which is
+  // Every case below is observed on the service's own mutual-TLS surface, which is
   // where the contract publishes an outcome: a success answers the
   // acknowledgement document, and a refusal answers the problem document carrying
   // the outcome name and the code that outcome owns. A refusal never claims a
@@ -805,7 +816,7 @@ describe("the reload status and code each contract outcome owns", () => {
     },
     {
       // The fixture seeds one generation its own applier refuses, and it is the
-      // only refusal the plugin-owned applier can produce.
+      // only refusal the service-owned applier can produce.
       outcome: "applyRejected",
       reach: () => Promise.resolve(),
       reload: () =>
@@ -888,7 +899,7 @@ describe("the reload status and code each contract outcome owns", () => {
     expect(answer.status).toBe(okStatus);
     expect(answer.mediaType).toContain(mediaType.reloadAcknowledgement);
     expect(Object.keys(acknowledgement).sort()).toEqual(
-      [...(contract.plugin.reloadAcknowledgement.required)].sort(),
+      [...(contract.service.reloadAcknowledgement.required)].sort(),
     );
     expect(acknowledgement[fixture.keys.outcome]).toBe(applied);
     expect(acknowledgement[fixture.keys.applied]).toBe(true);
@@ -906,7 +917,7 @@ describe("the reload status and code each contract outcome owns", () => {
     expect(repeated.status).toBe(okStatus);
     expect(repeated.mediaType).toContain(mediaType.reloadAcknowledgement);
     expect(Object.keys(acknowledgement).sort()).toEqual(
-      [...(contract.plugin.reloadAcknowledgement.required)].sort(),
+      [...(contract.service.reloadAcknowledgement.required)].sort(),
     );
     expect(acknowledgement[fixture.keys.outcome]).toBe("alreadyActive");
     expect(acknowledgement[fixture.keys.applied]).toBe(true);
@@ -914,7 +925,7 @@ describe("the reload status and code each contract outcome owns", () => {
   });
 });
 
-describe("the plugin-owned documents a replica serves", () => {
+describe("the service-owned documents a replica serves", () => {
   it("serves the manifest and the configuration schema verbatim", async () => {
     const manifest = await runtime.document<Record<string, unknown>>(
       fixture.documents.manifest,
@@ -924,12 +935,22 @@ describe("the plugin-owned documents a replica serves", () => {
     );
 
     expect(manifest.body.failure).toBe("");
-    expect(manifest.body.document).toEqual({
-      schemaVersion: fixture.schemaVersion,
-      capabilities: [],
+    expect(manifest.body.document).toMatchObject({
+      id: "reload-runtime-fixture",
+      version: "1.0.0",
+      sdkVersion: "service-sdk/v2",
+      manifestVersion: "service-runtime/v1",
+      configurationUI: {
+        version: "service-configuration-ui/v1",
+        groups: [{ id: "general", fields: [{ path: "/debug", widget: "toggle" }] }],
+      },
     });
     expect(schema.body.failure).toBe("");
-    expect(schema.body.document).toEqual({ type: "object", additionalProperties: true });
+    expect(schema.body.document).toEqual({
+      type: "object",
+      properties: { debug: { type: "boolean" } },
+      additionalProperties: true,
+    });
   });
 
   it("serves the health answer the contract publishes", async () => {
@@ -1033,7 +1054,7 @@ describe("a replica Core has not reloaded yet", () => {
     expect(answer.status).toBe(error("notReady").status);
     expect(answer.mediaType).toContain(mediaType.readiness);
     expect(Object.keys(document).sort()).toEqual(
-      [...contract.plugin.readiness.required].sort(),
+      [...contract.service.readiness.required].sort(),
     );
     expect(document[fixture.keys.ready]).toBe(false);
     expect(document[fixture.keys.generation]).toBe("");

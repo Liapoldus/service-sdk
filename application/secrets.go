@@ -6,14 +6,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/interfaces"
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/domain/interfaces"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
 )
 
 // ErrMissingSecretDependency is returned by NewSecretManager when a required
 // port, the lifecycle, the clock or the observer is absent. It names no
 // reference, handle, purpose or secret.
-var ErrMissingSecretDependency = errors.New("plugin secret dependency is required")
+var ErrMissingSecretDependency = errors.New("service secret dependency is required")
 
 // SecretManagerConfiguration carries the injected ports of the generic scoped
 // secret use case. The manager is a client of Core's broker only: it holds no
@@ -119,7 +119,7 @@ func (manager *SecretManager) IssueGrant(ctx context.Context, request models.Sec
 	}
 	if err := grant.Validate(); err != nil || grant.Generation != bound.Generation {
 		// A grant the broker did not bind to the generation this replica applied
-		// would hand the plugin a secret for a configuration that never ran, so it
+		// would hand the service a secret for a configuration that never ran, so it
 		// is refused on the same footing as a malformed grant.
 		manager.observe(ctx, KindSecretGrant, models.OutcomeGrantDenied)
 		return models.SecretGrant{}, models.ErrInvalidSecretGrant
@@ -182,7 +182,7 @@ func (manager *SecretManager) Redeem(ctx context.Context, redemption models.Secr
 	return value, nil
 }
 
-// SecretProvider is the one-call convenience for a plugin that needs a single
+// SecretProvider is the one-call convenience for a service that needs a single
 // operational secret: it issues a grant for the reference and purpose, redeems
 // it immediately and returns the value. The intermediate grant is never
 // retained, logged or returned, and a value obtained on a failing path is

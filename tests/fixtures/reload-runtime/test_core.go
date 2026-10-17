@@ -14,15 +14,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/Liapoldus/plugin-sdk/v2/tests/support/process"
+	"github.com/Liapoldus/service-sdk/v2/tests/support/process"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/interfaces"
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
-	"github.com/Liapoldus/plugin-sdk/v2/infrastructure"
+	"github.com/Liapoldus/service-sdk/v2/domain/interfaces"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/infrastructure"
 )
 
 var (
@@ -255,7 +255,7 @@ func (core *testCore) serveRedemption(w http.ResponseWriter, r *http.Request) {
 	}
 	grant.spent = true
 	core.grants[grant.handle] = grant
-	// The value document is the plugin's own opaque payload. The SDK does not
+	// The value document is the service's own opaque payload. The SDK does not
 	// publish a member for it and hands the bytes on, so the fixture answers with
 	// a plain document under the contract media type.
 	core.write(w, http.StatusOK, document.ResponseMediaType, document.MaximumResponseBytes, map[string]string{
@@ -367,7 +367,7 @@ func (core *testCore) refuse(w http.ResponseWriter, outcome models.Outcome) {
 		http.Error(w, "contract has no problem for this outcome", http.StatusInternalServerError)
 		return
 	}
-	core.write(w, problem.Status, core.contract.Plugin.Responses.ContentTypes.JSON, 0, models.Problem{
+	core.write(w, problem.Status, core.contract.Service.Responses.ContentTypes.JSON, 0, models.Problem{
 		Outcome: outcome,
 		Code:    problem.Code,
 	})

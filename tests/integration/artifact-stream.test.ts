@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Runtime } from "../support/runtime";
 
-describe("Core-to-plugin artifact streaming", () => {
+describe("Core-to-service artifact streaming", () => {
   it("streams bounded multipart through the SDK client to the mTLS SDK handler", async () => {
     const runtime = await Runtime.start();
     try {

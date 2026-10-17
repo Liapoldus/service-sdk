@@ -25,7 +25,7 @@ describe("a request dropped after the listener has accepted it", () => {
   it("reports no lifecycle result and applies nothing, and the surface keeps serving", async () => {
     // The surface has to be carrying a known generation before the drops are
     // measured, otherwise "no dropped request applied a generation" is a claim
-    // about a plugin that had nothing applied to begin with. The generation is
+    // about a service that had nothing applied to begin with. The generation is
     // published and reloaded through the ordinary path first, so the assertion
     // below is a comparison between two real applied states.
     const seeded = await runtime.publish({

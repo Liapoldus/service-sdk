@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
-	"github.com/Liapoldus/plugin-sdk/v2/infrastructure"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/infrastructure"
 )
 
 type result struct {
@@ -30,11 +30,11 @@ func main() {
 	contract, contractErr := infrastructure.LoadHTTPContract()
 	clientCreated := false
 	if identityErr == nil && contractErr == nil {
-		_, err := infrastructure.NewPluginClient(contract, "https://plugin.example", transport{}, identity)
+		_, err := infrastructure.NewServiceClient(contract, "https://service.example", transport{}, identity)
 		clientCreated = err == nil
 	}
 	wildcard, wildcardErr := models.NewPeerIdentity("", "spiffe://liapoldus/core/replicas/*")
-	_, wildcardClientErr := infrastructure.NewPluginClient(contract, "https://plugin.example", transport{}, wildcard)
+	_, wildcardClientErr := infrastructure.NewServiceClient(contract, "https://service.example", transport{}, wildcard)
 
 	output := result{
 		URIOnlyIdentityValid:           identityErr == nil && identity.Valid(),

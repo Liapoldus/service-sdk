@@ -16,10 +16,10 @@ const startupTimeoutMilliseconds = 90_000;
 const stopTimeoutMilliseconds = 15_000;
 
 export type ReadyLine = {
-  pluginURL: string;
+  serviceURL: string;
   controlURL: string;
   coreURL: string;
-  pluginHTTPSURL: string;
+  serviceHTTPSURL: string;
   generation: string;
   digest: string;
   duplicateDigest: string;
@@ -29,7 +29,7 @@ export type ReadyLine = {
   mTLSRejectsWrongIdentity: string;
   mTLSRejectsExpired: string;
   rejectsUnsafeControlURLs: string;
-  // The fixture's own throwaway authority and the plugin client keypair. They are
+  // The fixture's own throwaway authority and the service client keypair. They are
   // published so a harness can verify a fixture-only mutual-TLS surface and
   // authenticate to it from outside this process. The material is generated in
   // memory for a single run and means nothing outside it.
@@ -98,7 +98,7 @@ export type DropsResult = {
   dropped: number;
 };
 
-// The connection state of the plugin's mutual-TLS listener. An injected drop
+// The connection state of the service's mutual-TLS listener. An injected drop
 // removes its connection from the server's bookkeeping, so a connection that is
 // still counted as open after a drop is a leak.
 export type ConnectionsResult = {
@@ -161,7 +161,7 @@ function fixtureBinary(name: string): Promise<string> {
   if (existing) {
     return existing;
   }
-  buildRoot ??= mkdtemp(join(tmpdir(), "plugin-sdk-fixtures-"));
+  buildRoot ??= mkdtemp(join(tmpdir(), "service-sdk-fixtures-"));
   const building = buildRoot.then((root) => {
     const target = join(root, name);
     return execute("go", ["build", "-o", target, `./tests/fixtures/${name}`], {
@@ -249,12 +249,12 @@ export class Runtime {
     return this.#diagnostics.join("");
   }
 
-  get pluginURL(): string {
-    return this.info.pluginURL;
+  get serviceURL(): string {
+    return this.info.serviceURL;
   }
 
-  get pluginHTTPSURL(): string {
-    return this.info.pluginHTTPSURL;
+  get serviceHTTPSURL(): string {
+    return this.info.serviceHTTPSURL;
   }
 
   async stop(): Promise<void> {
@@ -343,11 +343,11 @@ export class Runtime {
     if (accept) {
       headers.accept = accept;
     }
-    return this.send(this.info.pluginURL, route, { method: "GET", headers });
+    return this.send(this.info.serviceURL, route, { method: "GET", headers });
   }
 
   async post(route: string, body: string, contentType?: string): Promise<Answer> {
-    return this.send(this.info.pluginURL, route, {
+    return this.send(this.info.serviceURL, route, {
       method: "POST",
       headers: contentType ? { "content-type": contentType } : {},
       body,

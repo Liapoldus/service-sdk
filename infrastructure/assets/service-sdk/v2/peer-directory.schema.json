@@ -228,7 +228,7 @@
       "type": "string"
     }
   },
-  "$id": "https://liapoldus.github.io/spec/plugin-sdk/v2/peer-directory.schema.json",
+  "$id": "https://liapoldus.github.io/spec/service-sdk/v2/peer-directory.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
@@ -236,7 +236,7 @@
       "$ref": "#/$defs/replicaIdentity"
     },
     "contractVersion": {
-      "const": "liapoldus.plugin-sdk.peer-directory.v1"
+      "const": "liapoldus.service-sdk.peer-directory.v1"
     },
     "expiresAt": {
       "format": "date-time",
@@ -265,6 +265,6 @@
     "caller",
     "links"
   ],
-  "title": "Plugin SDK peer directory v1",
+  "title": "Service SDK peer directory v1",
   "type": "object"
 }

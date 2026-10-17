@@ -107,7 +107,7 @@ describe("a secret grant issued to a ready replica", () => {
     expect(outcomesOf("secretRedemption")).toContain(granted);
   });
 
-  it("returns the secret bytes to the plugin as a count and a digest, never as a value", async () => {
+  it("returns the secret bytes to the service as a count and a digest, never as a value", async () => {
     const answer = (await runtime.secret(request(fixture.secrets.operations.provide))).body;
 
     expect(answer.failure).toBe("");

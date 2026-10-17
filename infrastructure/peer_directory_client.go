@@ -9,12 +9,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
 )
 
 var (
-	ErrInvalidPeerDirectoryClient = errors.New("invalid Plugin SDK peer-directory client")
-	ErrPeerDirectoryUnavailable   = errors.New("plugin SDK Core peer-directory unavailable")
+	ErrInvalidPeerDirectoryClient = errors.New("invalid Service SDK peer-directory client")
+	ErrPeerDirectoryUnavailable   = errors.New("service SDK Core peer-directory unavailable")
 )
 
 type PeerDirectoryPollResult struct {

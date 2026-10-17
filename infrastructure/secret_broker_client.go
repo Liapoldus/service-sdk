@@ -10,11 +10,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/interfaces"
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/domain/interfaces"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
 )
 
-// The plugin-to-Core secret routes are registered in the contract asset under
+// The service-to-Core secret routes are registered in the contract asset under
 // their logical keys. They are the only endpoint keys this file may use: no
 // path, method, member name, limit or media type is written here.
 
@@ -28,17 +28,17 @@ var (
 	// Core. A grant is one-use, so the SDK never puts the same handle on the wire
 	// twice: a second attempt is refused locally and attributed to the contract
 	// outcome the first attempt earned. The handle is not part of the message.
-	ErrSecretGrantSpent = errors.New("plugin secret grant was already offered to Core")
+	ErrSecretGrantSpent = errors.New("service secret grant was already offered to Core")
 	// ErrSecretGrantTrackingFull reports that the bounded spent-handle set is
 	// full. The SDK can then no longer prove a later handle is unused, so it
 	// refuses the redemption instead of offering a one-use handle it might not be
 	// able to refuse a second time.
-	ErrSecretGrantTrackingFull = errors.New("plugin secret grant replay tracking is full")
+	ErrSecretGrantTrackingFull = errors.New("service secret grant replay tracking is full")
 )
 
 var _ interfaces.SecretBroker = (*CoreSecretBroker)(nil)
 
-// CoreSecretBroker is the plugin-side client of the Core secret-grant API. It
+// CoreSecretBroker is the service-side client of the Core secret-grant API. It
 // asks Core for a scoped, expiring, one-use grant for one reference and purpose,
 // and later exchanges that grant for the value Core published.
 //
@@ -69,7 +69,7 @@ type CoreSecretBroker struct {
 	spentCap  int
 }
 
-// NewCoreSecretBroker builds the plugin-side secret-grant client.
+// NewCoreSecretBroker builds the service-side secret-grant client.
 //
 // It fails closed on anything that could not produce a safe call: a base URL that
 // is not a bare HTTPS origin, a missing transport, a contract that no longer
@@ -130,7 +130,7 @@ func NewCoreSecretBroker(contract HTTPContract, baseURL string, transport Contro
 }
 
 // ClassifyOutcome implements the optional adapter port of the application layer.
-// It reports only what a secret call actually saw, only for the plugin-to-Core
+// It reports only what a secret call actually saw, only for the service-to-Core
 // secret family, and an empty outcome whenever the failure was not attributable to
 // a published contract problem.
 func (broker *CoreSecretBroker) ClassifyOutcome(err error) models.Outcome {
@@ -212,7 +212,7 @@ func (broker *CoreSecretBroker) IssueGrant(ctx context.Context, request models.S
 // The value is returned as the exact document Core published, bounded by the
 // contract response limit and typed by the contract media type. The contract
 // registers no member for the redemption document, so the SDK names none: it hands
-// the bytes on without interpreting them, and the plugin that asked for the secret
+// the bytes on without interpreting them, and the service that asked for the secret
 // owns what they mean.
 //
 // The transport buffer is cleared on every path, including the successful one,
@@ -339,7 +339,7 @@ func (broker *CoreSecretBroker) grantUsable(published models.SecretGrant, reques
 	return nil
 }
 
-// call performs exactly one plugin-to-Core secret request against an already
+// call performs exactly one service-to-Core secret request against an already
 // resolved target. It renders the request under the contract's own media type,
 // byte limit and required fields, bounds the call with the deadline of its own
 // operation, and hands the request to the shared transport. It never retries and

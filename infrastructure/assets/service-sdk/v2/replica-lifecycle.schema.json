@@ -50,7 +50,7 @@
       "additionalProperties": false,
       "properties": {
         "contractVersion": {
-          "const": "liapoldus.plugin-sdk.replica-lifecycle.v2"
+          "const": "liapoldus.service-sdk.replica-lifecycle.v2"
         },
         "identity": {
           "$ref": "#/$defs/identity"
@@ -66,7 +66,7 @@
       "additionalProperties": false,
       "properties": {
         "contractVersion": {
-          "const": "liapoldus.plugin-sdk.replica-lifecycle.v2"
+          "const": "liapoldus.service-sdk.replica-lifecycle.v2"
         },
         "deregistered": {
           "const": true
@@ -171,7 +171,7 @@
           "type": "string"
         },
         "contractVersion": {
-          "const": "liapoldus.plugin-sdk.replica-lifecycle.v2"
+          "const": "liapoldus.service-sdk.replica-lifecycle.v2"
         },
         "identity": {
           "$ref": "#/$defs/identity"
@@ -212,7 +212,7 @@
       "additionalProperties": false,
       "properties": {
         "contractVersion": {
-          "const": "liapoldus.plugin-sdk.replica-lifecycle.v2"
+          "const": "liapoldus.service-sdk.replica-lifecycle.v2"
         },
         "identity": {
           "$ref": "#/$defs/identity"
@@ -258,7 +258,7 @@
           "type": "string"
         },
         "contractVersion": {
-          "const": "liapoldus.plugin-sdk.replica-lifecycle.v2"
+          "const": "liapoldus.service-sdk.replica-lifecycle.v2"
         },
         "identity": {
           "$ref": "#/$defs/identity"
@@ -279,7 +279,7 @@
       "additionalProperties": false,
       "properties": {
         "contractVersion": {
-          "const": "liapoldus.plugin-sdk.replica-lifecycle.v2"
+          "const": "liapoldus.service-sdk.replica-lifecycle.v2"
         },
         "identity": {
           "$ref": "#/$defs/identity"
@@ -307,7 +307,7 @@
       "type": "string"
     }
   },
-  "$id": "https://liapoldus.github.io/spec/plugin-sdk/v2/replica-lifecycle.schema.json",
+  "$id": "https://liapoldus.github.io/spec/service-sdk/v2/replica-lifecycle.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Plugin SDK replica lifecycle v2 DTOs"
+  "title": "Service SDK replica lifecycle v2 DTOs"
 }

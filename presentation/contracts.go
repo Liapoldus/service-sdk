@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
 )
 
 // Endpoint is one route of the versioned contract: the method Core must use and
@@ -29,7 +29,7 @@ type DocumentContract struct {
 	DigestAlgorithm string
 }
 
-// ContentTypes are the two media types the plugin REST surface answers with.
+// ContentTypes are the two media types the service REST surface answers with.
 type ContentTypes struct {
 	JSON    string
 	Metrics string
@@ -95,7 +95,7 @@ type Problem struct {
 }
 
 // Contracts is the injected view of the versioned HTTP contract that the handler
-// layer needs. It is a value, not a source: a plugin author's composition root
+// layer needs. It is a value, not a source: a service author's composition root
 // obtains it from the contract loader of the infrastructure layer and passes it
 // in, and this package never parses contract bytes, embeds an asset or names a
 // status, code, path, media type or limit of its own.
@@ -131,9 +131,9 @@ type Contracts struct {
 	ReloadRequest         DocumentContract
 	ReloadAcknowledgement DocumentContract
 	Readiness             DocumentContract
-	// Manifest and ConfigurationSchema describe the two plugin-owned documents
+	// Manifest and ConfigurationSchema describe the two service-owned documents
 	// this layer publishes verbatim. Their fields stay opaque: no required list
-	// is honoured for them because the plugin, not the SDK, owns their shape.
+	// is honoured for them because the service, not the SDK, owns their shape.
 	Manifest            DocumentContract
 	ConfigurationSchema DocumentContract
 	ArtifactStream      ArtifactStreamContract
@@ -142,7 +142,7 @@ type Contracts struct {
 	// Registration describes the identity document this replica publishes.
 	Registration DocumentContract
 
-	// MaximumMetadataBytes caps any document the plugin itself produces.
+	// MaximumMetadataBytes caps any document the service itself produces.
 	MaximumMetadataBytes int64
 	// ReadinessDeadline bounds one readiness read.
 	ReadinessDeadline time.Duration
@@ -285,7 +285,7 @@ func (contracts Contracts) Validate() error {
 	if err := contracts.Registration.checkModel(models.Registration{}); err != nil {
 		return err
 	}
-	// The two plugin-owned metadata documents stay opaque, so only their own
+	// The two service-owned metadata documents stay opaque, so only their own
 	// declared limits are checked. The SDK never requires a field of a document
 	// it does not own.
 	if err := contracts.Manifest.check(); err != nil {

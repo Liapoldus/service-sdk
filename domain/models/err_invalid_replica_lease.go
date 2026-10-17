@@ -2,4 +2,4 @@ package models
 
 import "errors"
 
-var ErrInvalidReplicaLease = errors.New("invalid Plugin SDK replica lease response")
+var ErrInvalidReplicaLease = errors.New("invalid Service SDK replica lease response")

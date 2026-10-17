@@ -1,22 +1,22 @@
-// Package application coordinates the generic Core-to-plugin REST lifecycle use
-// cases of a plugin replica. It is the only layer that owns business policy, and
+// Package application coordinates the generic Core-to-service REST lifecycle use
+// cases of a service replica. It is the only layer that owns business policy, and
 // it depends only on domain/models, domain/interfaces and the standard library:
-// it never imports HTTP, TLS, an adapter, presentation, a specific plugin,
-// `pluginprotocol` or Core.
+// it never imports HTTP, TLS, an adapter, presentation, a specific service,
+// `wool` or Core.
 //
 // The invariants of this layer are:
 //
 //   - Opaque product configuration. A configuration document is a single
 //     immutable JSON object that the SDK never decodes, canonicalises or
 //     remarshals. The SDK validates generic syntax only, hands the exact bytes
-//     Core stored to the plugin-owned applier, and never interprets a product
+//     Core stored to the service-owned applier, and never interprets a product
 //     field, capability, setting or route.
 //   - Verify, then apply. A document is applied only after its generation,
 //     digest and schema version have been verified against both the exact bytes
 //     and the Reload announcement, and only when Core still reports the
 //     generation as desired. Verification is never delegated to the pull.
 //   - Acknowledge only what was activated. A positive acknowledgement means the
-//     plugin-owned validator and applier returned success for the exact pulled
+//     service-owned validator and applier returned success for the exact pulled
 //     document. Every refusal carries a distinct outcome from the closed
 //     vocabulary of domain/models and leaves the previously active
 //     configuration fully active and reported by Readiness.

@@ -14,7 +14,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"github.com/Liapoldus/plugin-sdk/v2/tests/support/process"
+	"github.com/Liapoldus/service-sdk/v2/tests/support/process"
 	"math/big"
 	"net"
 	"net/http"
@@ -25,9 +25,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/interfaces"
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
-	"github.com/Liapoldus/plugin-sdk/v2/infrastructure"
+	"github.com/Liapoldus/service-sdk/v2/domain/interfaces"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/infrastructure"
 )
 
 var fixtureEpoch = time.Date(2026, time.October, 6, 10, 0, 0, 0, time.UTC)
@@ -76,6 +76,7 @@ type fakeCore struct {
 	contract         infrastructure.ReplicaLifecycleContract
 	clock            *fixtureClock
 	records          map[string]registrationRecord
+	registerCalls    int
 	directory        []byte
 	directoryETag    string
 	directoryChanged chan struct{}
@@ -361,6 +362,10 @@ func run() (map[string]any, error) {
 		{Carrier: models.PeerCarrierTCP, Endpoint: "forms-2.internal:9443", SecurityProfile: models.PeerSecurityMTLS},
 	}
 	_, overLimitPeerEndpointsErr := clientC.Register(context.Background(), overLimitPeerEndpoints)
+	leaseRecovery, err := exerciseLeaseRecovery(core, httpContract, replicaContract, authority, corePair, baseURL, coreIdentity)
+	if err != nil {
+		return nil, err
+	}
 	return map[string]any{
 		"peerDirectoryInitial":        initialDirectory.Directory.Generation == "directory-1",
 		"peerDirectoryChanged":        changedPoll.result.Directory.Generation == "directory-2",
@@ -395,7 +400,52 @@ func run() (map[string]any, error) {
 		"maximumPeerEndpoints":        replicaContract.Limits.MaximumPeerEndpoints,
 		"maximumContractsPerList":     replicaContract.Limits.MaximumContractsPerList,
 		"overLimitPeerEndpoints":      errorName(overLimitPeerEndpointsErr, models.ErrInvalidReplicaRegistration, "invalid_registration"),
+		"coreRestartLeaseRecovery":    leaseRecovery,
 	}, nil
+}
+
+func exerciseLeaseRecovery(core *fakeCore, httpContract infrastructure.HTTPContract, replicaContract infrastructure.ReplicaLifecycleContract,
+	authority *fixtureAuthority, corePair keypair, baseURL string, coreIdentity models.PeerIdentity) (map[string]any, error) {
+	identity := models.PeerReplicaID{InstanceID: "server", ReplicaID: "server-1", IncarnationID: "incarnation-recovery", PlacementID: "node-a"}
+	client, transport, err := newRegistrationClient(httpContract, replicaContract, authority, corePair, baseURL, coreIdentity, identity)
+	if err != nil {
+		return nil, err
+	}
+	defer transport.CloseIdleConnections()
+	registration := registrationRequest(replicaContract.ContractVersion, identity)
+	registration.RestEndpoint = "https://server-1.internal:19081"
+	readiness := func() models.Readiness {
+		return models.Readiness{InstanceID: identity.InstanceID, ReplicaID: identity.ReplicaID, Generation: "config-recovery", Ready: true}
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	managerDone := make(chan error, 1)
+	baseline := core.registrationCount()
+	go func() {
+		managerDone <- infrastructure.MaintainReplicaLease(ctx, infrastructure.ReplicaLeaseMaintenance{
+			Client: client, Registration: registration, Readiness: readiness,
+			RenewInterval: 10 * time.Millisecond, RetryInitial: time.Millisecond, RetryMaximum: 5 * time.Millisecond,
+		})
+	}()
+	if !core.waitForRegistrationCount(baseline+1, time.Second) {
+		cancel()
+		return nil, errors.New("lease maintainer did not publish its initial mTLS registration")
+	}
+	core.forgetReplica(identity)
+	if !core.waitForRegistrationCount(baseline+2, time.Second) {
+		cancel()
+		return nil, errors.New("lease maintainer did not re-register after Core lost the live replica")
+	}
+	cancel()
+	if err := <-managerDone; err != nil {
+		return nil, fmt.Errorf("lease maintainer did not stop cleanly: %w", err)
+	}
+	request, exists := core.registeredReplica(identity)
+	if !exists || request.Identity != identity || request.RestEndpoint != registration.RestEndpoint ||
+		request.Release != registration.Release || request.AppliedGeneration != "config-recovery" || !request.Ready {
+		return nil, errors.New("core recovery changed immutable registration metadata or lost current readiness")
+	}
+	return map[string]any{"sameIncarnation": true, "readinessRestored": true, "registerCalls": core.registrationCount() - baseline}, nil
 }
 
 func newRegistrationClient(httpContract infrastructure.HTTPContract, replicaContract infrastructure.ReplicaLifecycleContract, authority *fixtureAuthority, core keypair, baseURL string, coreIdentity models.PeerIdentity, identity models.PeerReplicaID) (*infrastructure.ReplicaLifecycleClient, *infrastructure.MutualTLSClient, error) {
@@ -450,12 +500,42 @@ func registrationRequest(contractVersion string, identity models.PeerReplicaID) 
 	}
 }
 
+func (core *fakeCore) registrationCount() int {
+	core.mutex.Lock()
+	defer core.mutex.Unlock()
+	return core.registerCalls
+}
+
+func (core *fakeCore) waitForRegistrationCount(minimum int, timeout time.Duration) bool {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if core.registrationCount() >= minimum {
+			return true
+		}
+		time.Sleep(time.Millisecond)
+	}
+	return core.registrationCount() >= minimum
+}
+
+func (core *fakeCore) forgetReplica(identity models.PeerReplicaID) {
+	core.mutex.Lock()
+	defer core.mutex.Unlock()
+	delete(core.records, identity.InstanceID+"\x00"+identity.ReplicaID)
+}
+
+func (core *fakeCore) registeredReplica(identity models.PeerReplicaID) (models.ReplicaRegistrationRequest, bool) {
+	core.mutex.Lock()
+	defer core.mutex.Unlock()
+	record, exists := core.records[identity.InstanceID+"\x00"+identity.ReplicaID]
+	return record.request, exists && record.active
+}
+
 func (core *fakeCore) handle(writer http.ResponseWriter, request *http.Request) {
 	if request.TLS == nil || len(request.TLS.PeerCertificates) == 0 {
 		core.writeProblem(writer, "unauthenticated")
 		return
 	}
-	if request.URL.Path == "/internal/v2/plugin-peer-directory" {
+	if request.URL.Path == "/internal/v2/service-peer-directory" {
 		core.handlePeerDirectory(writer, request)
 		return
 	}
@@ -518,6 +598,7 @@ func (core *fakeCore) handle(writer http.ResponseWriter, request *http.Request) 
 			core.writeProblem(writer, "leaseExpired")
 			return
 		}
+		core.registerCalls++
 		lease := core.clock.Now().Add(time.Duration(core.contract.Lease.TTLSeconds) * time.Second)
 		core.records[key] = registrationRecord{request: *document, expires: lease, active: true}
 		core.writeSuccess(writer, operation, models.ReplicaRegistrationResponse{

@@ -3,7 +3,7 @@ package interfaces
 import (
 	"context"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
 )
 
 // GenerationState is the durable slot Core reports for a pulled generation.

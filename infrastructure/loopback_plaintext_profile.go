@@ -2,9 +2,9 @@ package infrastructure
 
 import "errors"
 
-const expectedLoopbackPlaintextVersion = "liapoldus.plugin-sdk.loopback-plaintext.v2"
+const expectedLoopbackPlaintextVersion = "liapoldus.service-sdk.loopback-plaintext.v2"
 
-var ErrInvalidLoopbackPlaintextProfile = errors.New("invalid Plugin SDK loopback plaintext profile")
+var ErrInvalidLoopbackPlaintextProfile = errors.New("invalid Service SDK loopback plaintext profile")
 
 type LoopbackPlaintextProfile struct {
 	ContractVersion  string `json:"contractVersion"`

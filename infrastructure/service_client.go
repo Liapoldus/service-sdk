@@ -15,29 +15,29 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
 )
 
-// The Core-side client reaches the plugin lifecycle surface over the same
+// The Core-side client reaches the service lifecycle surface over the same
 // controlCallReload family the contract publishes a single Core-facing outcome
-// group for. control_transport.go registers exactly one Core-to-plugin family, so
+// group for. control_transport.go registers exactly one Core-to-service family, so
 // every read the operator performs is classified in that one vocabulary instead
-// of borrowing a plugin-to-Core or secret outcome.
+// of borrowing a service-to-Core or secret outcome.
 
-// The plugin lifecycle routes are registered in the contract asset under these
+// The service lifecycle routes are registered in the contract asset under these
 // logical names. They are the only endpoint keys this package may use; no path,
 // method or route string is written here.
 const (
-	pluginRouteIdentity       = "identity"
-	pluginRouteManifest       = "manifest"
-	pluginRouteConfigSchema   = "configSchema"
-	pluginRouteHealth         = "health"
-	pluginRouteReady          = "ready"
-	pluginRouteReload         = "reload"
-	pluginRouteArtifactStream = "artifactStream"
-	pluginRouteAdminSurface   = "adminSurface"
-	pluginRouteAdminAction    = "adminAction"
-	pluginRouteMetrics        = "metrics"
+	serviceRouteIdentity       = "identity"
+	serviceRouteManifest       = "manifest"
+	serviceRouteConfigSchema   = "configSchema"
+	serviceRouteHealth         = "health"
+	serviceRouteReady          = "ready"
+	serviceRouteReload         = "reload"
+	serviceRouteArtifactStream = "artifactStream"
+	serviceRouteAdminSurface   = "adminSurface"
+	serviceRouteAdminAction    = "adminAction"
+	serviceRouteMetrics        = "metrics"
 )
 
 // controlErrorNotReady is the contract error key of the one non-success answer
@@ -46,19 +46,19 @@ const (
 // and the code together.
 const controlErrorNotReady = "notReady"
 
-// controlPluginRouteNames lists every plugin route this client must be able to
+// controlServiceRouteNames lists every service route this client must be able to
 // resolve before it is usable.
-var controlPluginRouteNames = [...]string{
-	pluginRouteIdentity,
-	pluginRouteManifest,
-	pluginRouteConfigSchema,
-	pluginRouteHealth,
-	pluginRouteReady,
-	pluginRouteReload,
-	pluginRouteArtifactStream,
-	pluginRouteAdminSurface,
-	pluginRouteAdminAction,
-	pluginRouteMetrics,
+var controlServiceRouteNames = [...]string{
+	serviceRouteIdentity,
+	serviceRouteManifest,
+	serviceRouteConfigSchema,
+	serviceRouteHealth,
+	serviceRouteReady,
+	serviceRouteReload,
+	serviceRouteArtifactStream,
+	serviceRouteAdminSurface,
+	serviceRouteAdminAction,
+	serviceRouteMetrics,
 }
 
 // ArtifactStreamResult preserves the product-owned result from a streamed
@@ -68,7 +68,7 @@ type ArtifactStreamResult struct {
 	Body       []byte
 }
 
-// AdminSurfaceDocument contains the plugin-owned descriptor as exact bytes and
+// AdminSurfaceDocument contains the service-owned descriptor as exact bytes and
 // the digest calculated over those bytes, without decoding or re-encoding it.
 type AdminSurfaceDocument struct {
 	Bytes  []byte
@@ -81,7 +81,7 @@ type AdminActionResult struct {
 	Body       []byte
 }
 
-// PluginClient is the Core-side control client of exactly one plugin replica.
+// ServiceClient is the Core-side control client of exactly one service replica.
 // It is the client a Core operator and the conformance suite drive: it announces
 // a generation, reads back what the replica actually applied, and reads the
 // replica's published metadata, health, readiness and metrics.
@@ -96,8 +96,8 @@ type AdminActionResult struct {
 // following anywhere in this type, because a Reload whose outcome the client
 // cannot know must not be repeated with the replica credentials attached.
 //
-// PluginClient is safe for concurrent use.
-type PluginClient struct {
+// ServiceClient is safe for concurrent use.
+type ServiceClient struct {
 	contract  HTTPContract
 	baseURL   *url.URL
 	transport ControlTransport
@@ -110,15 +110,15 @@ type PluginClient struct {
 }
 
 // ArtifactStream forwards a JSON metadata part and one live artifact part to
-// the plugin over the contract's per-replica mTLS channel. It consumes and closes
+// the service over the contract's per-replica mTLS channel. It consumes and closes
 // artifact; callers must pass the request body they are forwarding so cancellation
 // can close its source. Neither part is buffered as a whole.
-func (client *PluginClient) ArtifactStream(ctx context.Context, invocation models.ArtifactInvocation, metadata []byte, contentType string, artifact io.ReadCloser) (ArtifactStreamResult, error) {
+func (client *ServiceClient) ArtifactStream(ctx context.Context, invocation models.ArtifactInvocation, metadata []byte, contentType string, artifact io.ReadCloser) (ArtifactStreamResult, error) {
 	if client == nil || artifact == nil {
 		return ArtifactStreamResult{}, ErrInvalidControlCall
 	}
 	defer closeResource(artifact)
-	stream := client.contract.Plugin.ArtifactStream
+	stream := client.contract.Service.ArtifactStream
 	if err := invocation.Validate(); err != nil {
 		return ArtifactStreamResult{}, err
 	}
@@ -135,7 +135,7 @@ func (client *PluginClient) ArtifactStream(ctx context.Context, invocation model
 	if err != nil {
 		return ArtifactStreamResult{}, err
 	}
-	endpoint, ok := client.routes[pluginRouteArtifactStream]
+	endpoint, ok := client.routes[serviceRouteArtifactStream]
 	if !ok {
 		return ArtifactStreamResult{}, ErrInvalidControlCall
 	}
@@ -162,7 +162,7 @@ func (client *PluginClient) ArtifactStream(ctx context.Context, invocation model
 		return ArtifactStreamResult{}, ErrControlTransportFailed
 	}
 	request.Header.Set("content-type", multipartWriter.FormDataContentType())
-	request.Header.Set("accept", client.contract.Plugin.Responses.ContentTypes.JSON)
+	request.Header.Set("accept", client.contract.Service.Responses.ContentTypes.JSON)
 	for name, value := range invocationHeaders {
 		request.Header.Set(name, value)
 	}
@@ -211,22 +211,22 @@ func (client *PluginClient) ArtifactStream(ctx context.Context, invocation model
 	return ArtifactStreamResult{StatusCode: response.StatusCode, Body: body}, nil
 }
 
-// AdminSurface returns the plugin-owned management descriptor exactly as
+// AdminSurface returns the service-owned management descriptor exactly as
 // published. The SDK computes a digest for Core to bind to a subsequent action.
-func (client *PluginClient) AdminSurface(ctx context.Context) (AdminSurfaceDocument, error) {
+func (client *ServiceClient) AdminSurface(ctx context.Context) (AdminSurfaceDocument, error) {
 	if client == nil {
 		return AdminSurfaceDocument{}, controlUnusable(controlCallReload, ErrInvalidControlCall)
 	}
-	response, err := client.call(ctx, pluginRouteAdminSurface, client.contract.Plugin.AdminSurface.MediaType,
-		client.contract.Plugin.AdminSurface.MaximumBytes, controlCallReload, nil)
+	response, err := client.call(ctx, serviceRouteAdminSurface, client.contract.Service.AdminSurface.MediaType,
+		client.contract.Service.AdminSurface.MaximumBytes, controlCallReload, nil)
 	if err != nil {
 		return AdminSurfaceDocument{}, err
 	}
 	defer closeResource(response.Body)
 	if !controlIsSuccess(response.StatusCode) {
-		return AdminSurfaceDocument{}, client.refusal(response, client.contract.Plugin.AdminSurface.MaximumBytes)
+		return AdminSurfaceDocument{}, client.refusal(response, client.contract.Service.AdminSurface.MaximumBytes)
 	}
-	body, err := client.document(response, client.contract.Plugin.AdminSurface, controlCallReload)
+	body, err := client.document(response, client.contract.Service.AdminSurface, controlCallReload)
 	if err != nil {
 		return AdminSurfaceDocument{}, err
 	}
@@ -235,12 +235,12 @@ func (client *PluginClient) AdminSurface(ctx context.Context) (AdminSurfaceDocum
 }
 
 // AdminAction performs one authorized JSON invocation. It deliberately does not
-// retry or interpret the plugin-owned status/body; callers own product semantics.
-func (client *PluginClient) AdminAction(ctx context.Context, invocation models.AdminActionInvocation, input []byte) (AdminActionResult, error) {
+// retry or interpret the service-owned status/body; callers own product semantics.
+func (client *ServiceClient) AdminAction(ctx context.Context, invocation models.AdminActionInvocation, input []byte) (AdminActionResult, error) {
 	if client == nil || invocation.Validate() != nil {
 		return AdminActionResult{}, controlUnusable(controlCallReload, ErrInvalidControlCall)
 	}
-	contract := client.contract.Plugin.AdminAction
+	contract := client.contract.Service.AdminAction
 	if int64(len(input)) > contract.MaximumRequestBytes || !models.ValidJSONObject(input) ||
 		len(invocation.PageID) > contract.MaximumPageIDBytes || len(invocation.ActionID) > contract.MaximumActionIDBytes {
 		return AdminActionResult{}, controlUnusable(controlCallReload, ErrControlRequestOversized)
@@ -249,7 +249,7 @@ func (client *PluginClient) AdminAction(ctx context.Context, invocation models.A
 	if err != nil || !pattern.MatchString(invocation.PageID) || !pattern.MatchString(invocation.ActionID) {
 		return AdminActionResult{}, controlUnusable(controlCallReload, ErrInvalidControlCall)
 	}
-	endpoint, ok := client.routes[pluginRouteAdminAction]
+	endpoint, ok := client.routes[serviceRouteAdminAction]
 	if !ok {
 		return AdminActionResult{}, controlUnusable(controlCallReload, ErrInvalidControlCall)
 	}
@@ -407,7 +407,7 @@ func writeArtifactMultipart(pipe *io.PipeWriter, writer *multipart.Writer, contr
 	return pipe.Close()
 }
 
-// NewPluginClient builds the Core-side control client for one plugin replica.
+// NewServiceClient builds the Core-side control client for one service replica.
 //
 // It fails closed on anything that could not produce a safe call: a base URL
 // that is not a bare HTTPS origin, a missing transport, a peer identity that is
@@ -417,7 +417,7 @@ func writeArtifactMultipart(pipe *io.PipeWriter, writer *multipart.Writer, contr
 // contract describes no problem for. The pinned identity is exactly one
 // models.PeerIdentity: a peer set of zero and a wildcard pattern are both
 // refused, so the client can never be pointed at "any" replica.
-func NewPluginClient(contract HTTPContract, baseURL string, transport ControlTransport, peer models.PeerIdentity) (*PluginClient, error) {
+func NewServiceClient(contract HTTPContract, baseURL string, transport ControlTransport, peer models.PeerIdentity) (*ServiceClient, error) {
 	parsed, valid := parseControlURL(baseURL)
 	if !valid || transport == nil {
 		return nil, ErrInvalidControlCall
@@ -425,8 +425,8 @@ func NewPluginClient(contract HTTPContract, baseURL string, transport ControlTra
 	if !peer.Valid() || mutualTLSHasWildcard(peer) {
 		return nil, ErrInvalidControlCall
 	}
-	routes := make(map[string]Endpoint, len(controlPluginRouteNames))
-	for _, name := range controlPluginRouteNames {
+	routes := make(map[string]Endpoint, len(controlServiceRouteNames))
+	for _, name := range controlServiceRouteNames {
 		endpoint, err := contract.Endpoint(name)
 		if err != nil {
 			return nil, err
@@ -434,20 +434,20 @@ func NewPluginClient(contract HTTPContract, baseURL string, transport ControlTra
 		routes[name] = endpoint
 	}
 	if err := requireControlMediaTypes([]string{
-		contract.Plugin.ReloadRequest.MediaType,
-		contract.Plugin.ReloadAcknowledgement.MediaType,
-		contract.Plugin.Readiness.MediaType,
-		contract.Plugin.Manifest.MediaType,
-		contract.Plugin.ConfigurationSchema.MediaType,
+		contract.Service.ReloadRequest.MediaType,
+		contract.Service.ReloadAcknowledgement.MediaType,
+		contract.Service.Readiness.MediaType,
+		contract.Service.Manifest.MediaType,
+		contract.Service.ConfigurationSchema.MediaType,
 		contract.Identity.Registration.MediaType,
-		contract.Plugin.Responses.ContentTypes.JSON,
-		contract.Plugin.Responses.ContentTypes.Metrics,
+		contract.Service.Responses.ContentTypes.JSON,
+		contract.Service.Responses.ContentTypes.Metrics,
 	}); err != nil {
 		return nil, err
 	}
-	if contract.Plugin.Responses.Health.Status < 100 ||
-		len(contract.Plugin.Responses.Health.Body) == 0 ||
-		contract.Plugin.MaximumMetadataBytes <= 0 {
+	if contract.Service.Responses.Health.Status < 100 ||
+		len(contract.Service.Responses.Health.Body) == 0 ||
+		contract.Service.MaximumMetadataBytes <= 0 {
 		return nil, ErrInvalidControlCall
 	}
 	notReady, err := contract.Problem(controlErrorNotReady)
@@ -458,10 +458,10 @@ func NewPluginClient(contract HTTPContract, baseURL string, transport ControlTra
 	if err != nil {
 		return nil, err
 	}
-	if contract.Deadlines.PluginReloadSeconds <= 0 || contract.Deadlines.PluginReadinessSeconds <= 0 {
+	if contract.Deadlines.ServiceReloadSeconds <= 0 || contract.Deadlines.ServiceReadinessSeconds <= 0 {
 		return nil, ErrInvalidControlCall
 	}
-	return &PluginClient{
+	return &ServiceClient{
 		contract:  contract,
 		baseURL:   parsed,
 		transport: transport,
@@ -469,15 +469,15 @@ func NewPluginClient(contract HTTPContract, baseURL string, transport ControlTra
 		problems:  problems,
 		routes:    routes,
 		notReady:  notReady.Status,
-		reload:    contract.Deadlines.PluginReloadSeconds,
-		read:      contract.Deadlines.PluginReadinessSeconds,
+		reload:    contract.Deadlines.ServiceReloadSeconds,
+		read:      contract.Deadlines.ServiceReadinessSeconds,
 	}, nil
 }
 
 // PeerIdentity returns the single registered Core replica identity this client
 // pins. It is the identity the transport must verify, and it is exposed so an
 // operator can confirm which replica the client was built for.
-func (client *PluginClient) PeerIdentity() models.PeerIdentity {
+func (client *ServiceClient) PeerIdentity() models.PeerIdentity {
 	if client == nil {
 		return models.PeerIdentity{}
 	}
@@ -485,10 +485,10 @@ func (client *PluginClient) PeerIdentity() models.PeerIdentity {
 }
 
 // ClassifyOutcome implements the optional adapter port of the application layer.
-// It reports only what the call actually saw, only for the Core-to-plugin family,
+// It reports only what the call actually saw, only for the Core-to-service family,
 // and an empty outcome whenever the failure was not attributable to a published
 // contract problem, leaving the decision to the caller's own classification.
-func (client *PluginClient) ClassifyOutcome(err error) models.Outcome {
+func (client *ServiceClient) ClassifyOutcome(err error) models.Outcome {
 	if client == nil {
 		return ""
 	}
@@ -510,7 +510,7 @@ func (client *PluginClient) ClassifyOutcome(err error) models.Outcome {
 // Reload is never retried. An unanswered or refused announcement is the Core
 // replica's decision to repeat: repeating it here would re-send the replica
 // credentials against an outcome the client does not know.
-func (client *PluginClient) Reload(ctx context.Context, reload models.Reload) (models.ReloadAcknowledgement, error) {
+func (client *ServiceClient) Reload(ctx context.Context, reload models.Reload) (models.ReloadAcknowledgement, error) {
 	if client == nil {
 		return models.ReloadAcknowledgement{}, controlUnusable(controlCallReload, ErrInvalidControlCall)
 	}
@@ -519,19 +519,19 @@ func (client *PluginClient) Reload(ctx context.Context, reload models.Reload) (m
 		// claimed for it: the refusal is entirely local.
 		return models.ReloadAcknowledgement{}, controlUnusable(controlCallReload, models.ErrInvalidReload)
 	}
-	document := client.contract.Plugin.ReloadRequest
+	document := client.contract.Service.ReloadRequest
 	contents, err := client.marshal(reload, document.MediaType, document.MaximumBytes,
 		document.Required, controlCallReload)
 	if err != nil {
 		return models.ReloadAcknowledgement{}, err
 	}
-	response, err := client.call(ctx, pluginRouteReload, document.MediaType,
+	response, err := client.call(ctx, serviceRouteReload, document.MediaType,
 		document.MaximumBytes, controlCallReload, bytes.NewReader(contents))
 	if err != nil {
 		return models.ReloadAcknowledgement{}, err
 	}
 	defer closeResource(response.Body)
-	acknowledgement := client.contract.Plugin.ReloadAcknowledgement
+	acknowledgement := client.contract.Service.ReloadAcknowledgement
 	if !controlIsSuccess(response.StatusCode) {
 		return models.ReloadAcknowledgement{}, client.refusal(response, acknowledgement.MaximumBytes)
 	}
@@ -559,12 +559,12 @@ func (client *PluginClient) Reload(ctx context.Context, reload models.Reload) (m
 // A document that contradicts its own status line is refused rather than
 // reported, because a body claiming readiness on a not-ready status is not a
 // fact about the replica.
-func (client *PluginClient) Readiness(ctx context.Context) (models.Readiness, error) {
+func (client *ServiceClient) Readiness(ctx context.Context) (models.Readiness, error) {
 	if client == nil {
 		return models.Readiness{}, controlUnusable(controlCallReload, ErrInvalidControlCall)
 	}
-	document := client.contract.Plugin.Readiness
-	response, err := client.call(ctx, pluginRouteReady, document.MediaType, document.MaximumBytes,
+	document := client.contract.Service.Readiness
+	response, err := client.call(ctx, serviceRouteReady, document.MediaType, document.MaximumBytes,
 		controlCallReload, nil)
 	if err != nil {
 		return models.Readiness{}, err
@@ -592,16 +592,16 @@ func (client *PluginClient) Readiness(ctx context.Context) (models.Readiness, er
 // returns no document: health is a liveness fact, and the contract publishes it
 // as a fixed status plus a fixed body.
 //
-// The contract registers no dedicated health byte ceiling, so the plugin
+// The contract registers no dedicated health byte ceiling, so the service
 // metadata bound is used. It is a contract value, not a Go constant, and it
 // keeps an unbounded peer body from being buffered.
-func (client *PluginClient) Health(ctx context.Context) error {
+func (client *ServiceClient) Health(ctx context.Context) error {
 	if client == nil {
 		return controlUnusable(controlCallReload, ErrInvalidControlCall)
 	}
-	health := client.contract.Plugin.Responses.Health
-	maximum := client.contract.Plugin.MaximumMetadataBytes
-	response, err := client.call(ctx, pluginRouteHealth, client.contract.Plugin.Responses.ContentTypes.JSON,
+	health := client.contract.Service.Responses.Health
+	maximum := client.contract.Service.MaximumMetadataBytes
+	response, err := client.call(ctx, serviceRouteHealth, client.contract.Service.Responses.ContentTypes.JSON,
 		maximum, controlCallReload, nil)
 	if err != nil {
 		return err
@@ -611,7 +611,7 @@ func (client *PluginClient) Health(ctx context.Context) error {
 		return client.refusal(response, maximum)
 	}
 	body, err := client.document(response, DocumentContract{
-		MediaType:    client.contract.Plugin.Responses.ContentTypes.JSON,
+		MediaType:    client.contract.Service.Responses.ContentTypes.JSON,
 		MaximumBytes: maximum,
 	}, controlCallReload)
 	if err != nil {
@@ -624,32 +624,32 @@ func (client *PluginClient) Health(ctx context.Context) error {
 // replica published. The document is not parsed, decoded or re-encoded: the SDK
 // does not interpret a product field, and a caller that needs to read it owns
 // that decision.
-func (client *PluginClient) Manifest(ctx context.Context) ([]byte, error) {
+func (client *ServiceClient) Manifest(ctx context.Context) ([]byte, error) {
 	if client == nil {
 		return nil, controlUnusable(controlCallReload, ErrInvalidControlCall)
 	}
-	return client.documentRoute(ctx, pluginRouteManifest, client.contract.Plugin.Manifest)
+	return client.documentRoute(ctx, serviceRouteManifest, client.contract.Service.Manifest)
 }
 
 // ConfigurationSchema returns the replica's configuration schema as the exact
 // bytes the replica published, for the same reason Manifest does.
-func (client *PluginClient) ConfigurationSchema(ctx context.Context) ([]byte, error) {
+func (client *ServiceClient) ConfigurationSchema(ctx context.Context) ([]byte, error) {
 	if client == nil {
 		return nil, controlUnusable(controlCallReload, ErrInvalidControlCall)
 	}
-	return client.documentRoute(ctx, pluginRouteConfigSchema, client.contract.Plugin.ConfigurationSchema)
+	return client.documentRoute(ctx, serviceRouteConfigSchema, client.contract.Service.ConfigurationSchema)
 }
 
 // Identity returns the bootstrap registration document this replica publishes so
 // Core can reconcile a reconnected replica. The document is validated against
 // the contract's required fields and against the identity syntax the domain
 // owns, and is otherwise returned as published.
-func (client *PluginClient) Identity(ctx context.Context) (models.Registration, error) {
+func (client *ServiceClient) Identity(ctx context.Context) (models.Registration, error) {
 	if client == nil {
 		return models.Registration{}, controlUnusable(controlCallReload, ErrInvalidControlCall)
 	}
 	registration := client.contract.Identity.Registration
-	response, err := client.call(ctx, pluginRouteIdentity, registration.MediaType,
+	response, err := client.call(ctx, serviceRouteIdentity, registration.MediaType,
 		registration.MaximumBytes, controlCallReload, nil)
 	if err != nil {
 		return models.Registration{}, err
@@ -677,13 +677,13 @@ func (client *PluginClient) Identity(ctx context.Context) (models.Registration, 
 // Metrics returns the replica's metrics exposition as the exact text the replica
 // published. The document is not parsed: the exposition format and the metric
 // names are the replica's to publish, and the SDK does not second-guess them.
-func (client *PluginClient) Metrics(ctx context.Context) (string, error) {
+func (client *ServiceClient) Metrics(ctx context.Context) (string, error) {
 	if client == nil {
 		return "", controlUnusable(controlCallReload, ErrInvalidControlCall)
 	}
-	mediaType := client.contract.Plugin.Responses.ContentTypes.Metrics
-	maximum := client.contract.Plugin.MaximumMetadataBytes
-	response, err := client.call(ctx, pluginRouteMetrics, mediaType, maximum, controlCallReload, nil)
+	mediaType := client.contract.Service.Responses.ContentTypes.Metrics
+	maximum := client.contract.Service.MaximumMetadataBytes
+	response, err := client.call(ctx, serviceRouteMetrics, mediaType, maximum, controlCallReload, nil)
 	if err != nil {
 		return "", err
 	}
@@ -702,7 +702,7 @@ func (client *PluginClient) Metrics(ctx context.Context) (string, error) {
 // CloseIdleConnections releases pooled control connections when the transport
 // supports it, so a rotated replica credential is not served over an already
 // established connection. A transport that pools nothing is not an error.
-func (client *PluginClient) CloseIdleConnections() {
+func (client *ServiceClient) CloseIdleConnections() {
 	if client == nil {
 		return
 	}
@@ -712,7 +712,7 @@ func (client *PluginClient) CloseIdleConnections() {
 }
 
 // documentRoute reads a metadata route and returns the published bytes.
-func (client *PluginClient) documentRoute(ctx context.Context, name string, document DocumentContract) ([]byte, error) {
+func (client *ServiceClient) documentRoute(ctx context.Context, name string, document DocumentContract) ([]byte, error) {
 	response, err := client.call(ctx, name, document.MediaType, document.MaximumBytes, controlCallReload, nil)
 	if err != nil {
 		return nil, err
@@ -724,7 +724,7 @@ func (client *PluginClient) documentRoute(ctx context.Context, name string, docu
 	return client.document(response, document, controlCallReload)
 }
 
-// call performs exactly one control-plane request on a plugin route. It resolves
+// call performs exactly one control-plane request on a service route. It resolves
 // the route from the contract, bounds the call with the deadline of the operation,
 // and hands the request to the shared transport. It never retries and never
 // follows a redirect: the transport is the only thing that can move bytes, and
@@ -734,7 +734,7 @@ func (client *PluginClient) documentRoute(ctx context.Context, name string, docu
 // net/http as an untyped nil so a read never carries a request body at all,
 // rather than as a nil reader of a concrete type, which would still be a
 // non-nil io.Reader.
-func (client *PluginClient) call(ctx context.Context, name, accept string, maximum int64, kind controlCallKind, body io.Reader) (*http.Response, error) {
+func (client *ServiceClient) call(ctx context.Context, name, accept string, maximum int64, kind controlCallKind, body io.Reader) (*http.Response, error) {
 	if maximum <= 0 {
 		return nil, controlUnusable(kind, ErrInvalidControlCall)
 	}
@@ -747,7 +747,7 @@ func (client *PluginClient) call(ctx context.Context, name, accept string, maxim
 		return nil, controlUnusable(kind, err)
 	}
 	deadline := client.read
-	if name == pluginRouteReload {
+	if name == serviceRouteReload {
 		deadline = client.reload
 	}
 	callCtx, cancel, err := controlCallContext(ctx, deadline)
@@ -760,7 +760,7 @@ func (client *PluginClient) call(ctx context.Context, name, accept string, maxim
 		return nil, controlUnusable(kind, ErrControlTransportFailed)
 	}
 	if body != nil {
-		request.Header.Set("content-type", client.contract.Plugin.ReloadRequest.MediaType)
+		request.Header.Set("content-type", client.contract.Service.ReloadRequest.MediaType)
 	}
 	request.Header.Set("accept", accept)
 	response, err := performControlCall(client.transport, request, kind)
@@ -792,7 +792,7 @@ func (body *controlResponseBody) Close() error {
 // document applies the contract's rules to one successful response: the exact
 // media type, the byte limit, and every field the contract marks required. It
 // returns the bytes exactly as published and never decodes them.
-func (client *PluginClient) document(response *http.Response, document DocumentContract, kind controlCallKind) ([]byte, error) {
+func (client *ServiceClient) document(response *http.Response, document DocumentContract, kind controlCallKind) ([]byte, error) {
 	expected, err := controlMediaType(document.MediaType)
 	if err != nil {
 		return nil, controlUnusable(kind, err)
@@ -814,7 +814,7 @@ func (client *PluginClient) document(response *http.Response, document DocumentC
 // the exact media type, the byte limit, and every field the contract marks
 // required. An oversized request is never sent, so the caller learns its own
 // input was unusable rather than discovering it from a replica.
-func (client *PluginClient) marshal(document any, mediaType string, maximum int64, required []string, kind controlCallKind) ([]byte, error) {
+func (client *ServiceClient) marshal(document any, mediaType string, maximum int64, required []string, kind controlCallKind) ([]byte, error) {
 	if _, err := controlMediaType(mediaType); err != nil {
 		return nil, controlUnusable(kind, err)
 	}
@@ -834,7 +834,7 @@ func (client *PluginClient) marshal(document any, mediaType string, maximum int6
 // refusal attributes a non-success answer to the problem the replica published.
 // A body the client cannot read is not a licence to guess: the call stays
 // unattributed and the caller's own transport classification decides.
-func (client *PluginClient) refusal(response *http.Response, maximum int64) error {
+func (client *ServiceClient) refusal(response *http.Response, maximum int64) error {
 	contents, err := readControlBody(response.Body, maximum)
 	if err != nil {
 		return controlUnusable(controlCallReload, ErrControlRequestRefused)

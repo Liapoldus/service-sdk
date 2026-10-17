@@ -16,7 +16,7 @@ func (reference SecretReference) Validate() error {
 }
 
 // SecretGrantRequest asks Core for a grant bound to this replica, the generation
-// the plugin has applied, and a single declared purpose.
+// the service has applied, and a single declared purpose.
 type SecretGrantRequest struct {
 	Reference  string `json:"reference"`
 	Purpose    string `json:"purpose"`
@@ -69,7 +69,7 @@ func (redemption SecretRedemption) Validate() error {
 
 // SecretValue holds redeemed secret bytes in memory only. It has no String
 // method so it cannot be interpolated into a log line by accident, it is never
-// serialized by the SDK, and Destroy zeroes the buffer. The plugin drops it after
+// serialized by the SDK, and Destroy zeroes the buffer. The service drops it after
 // the generation it belongs to is replaced or the process shuts down.
 type SecretValue struct {
 	contents []byte

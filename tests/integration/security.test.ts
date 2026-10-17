@@ -42,7 +42,7 @@ afterAll(async () => {
 });
 
 function endpoint(): { host: string; port: number } {
-  const url = new URL(runtime.info.pluginHTTPSURL);
+  const url = new URL(runtime.info.serviceHTTPSURL);
   return { host: url.hostname, port: Number(url.port) };
 }
 
@@ -364,12 +364,12 @@ describe("the control URLs the SDK will dial", () => {
   it("refuses a control URL that is not a mutual-TLS Core endpoint", () => {
     expect(runtime.info.rejectsUnsafeControlURLs).toBe("true");
     expect(runtime.info.coreURL.startsWith("https://")).toBe(true);
-    expect(runtime.info.pluginHTTPSURL.startsWith("https://")).toBe(true);
+    expect(runtime.info.serviceHTTPSURL.startsWith("https://")).toBe(true);
   });
 
   it("serves the replica's own surface on a separate plaintext test mirror only", async () => {
-    expect(runtime.info.pluginURL.startsWith("http://")).toBe(true);
-    expect(runtime.info.pluginURL).not.toBe(runtime.info.pluginHTTPSURL);
+    expect(runtime.info.serviceURL.startsWith("http://")).toBe(true);
+    expect(runtime.info.serviceURL).not.toBe(runtime.info.serviceHTTPSURL);
     expect(await anonymousRequest()).not.toMatch(/^answered/);
     const mirror = await runtime.get(path("health"));
 

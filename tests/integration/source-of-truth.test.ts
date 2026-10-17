@@ -67,12 +67,12 @@ function collectStrings(value: unknown, found: string[] = []): string[] {
 // encoding of a refusal. Help text, the version string and the bare HTTP methods
 // are excluded for the same reason: they are not a per-endpoint value.
 function guardedValues(): string[] {
-  const metrics = contract.plugin.responses.metrics;
+  const metrics = contract.service.responses.metrics;
   const vocabulary = new Set([
     ...collectStrings(contract.outcomeProblems),
     ...collectStrings(contract.outcomes),
   ]);
-  const paths = collectStrings(contract.plugin.endpoints).filter((value) =>
+  const paths = collectStrings(contract.service.endpoints).filter((value) =>
     value.startsWith("/"),
   );
   // A code that is spelled exactly like an outcome belongs to the domain-owned
@@ -92,7 +92,7 @@ function guardedValues(): string[] {
     ...new Set([
       ...paths,
       ...codes,
-      ...collectStrings(contract.plugin.responses.contentTypes),
+      ...collectStrings(contract.service.responses.contentTypes),
       ...metricNames,
       ...metricFailures,
       contract.transportSecurity.peerIdentity.uniformResourceIdentifierPrefix,
@@ -128,7 +128,7 @@ describe("typed definitions own constants and JSON assets publish them", () => {
   });
 
   it("publishes a metric name, help text and label for every counter it declares", () => {
-    const metrics = contract.plugin.responses.metrics;
+    const metrics = contract.service.responses.metrics;
 
     for (const name of [
       metrics.readyMetricName,
@@ -184,19 +184,19 @@ describe("typed definitions own constants and JSON assets publish them", () => {
       .map((entry) => relative(projectRoot, resolve(assetsRoot, entry.parentPath, entry.name)));
 
     expect(assets.sort()).toEqual([
-      "infrastructure/assets/plugin-sdk/v2/http-contract.json",
-      "infrastructure/assets/plugin-sdk/v2/loopback-plaintext-profile.json",
-      "infrastructure/assets/plugin-sdk/v2/peer-directory-poll.json",
-      "infrastructure/assets/plugin-sdk/v2/peer-directory.schema.json",
-      "infrastructure/assets/plugin-sdk/v2/replica-lifecycle.json",
-      "infrastructure/assets/plugin-sdk/v2/replica-lifecycle.schema.json",
+      "infrastructure/assets/service-sdk/v2/http-contract.json",
+      "infrastructure/assets/service-sdk/v2/loopback-plaintext-profile.json",
+      "infrastructure/assets/service-sdk/v2/peer-directory-poll.json",
+      "infrastructure/assets/service-sdk/v2/peer-directory.schema.json",
+      "infrastructure/assets/service-sdk/v2/replica-lifecycle.json",
+      "infrastructure/assets/service-sdk/v2/replica-lifecycle.schema.json",
     ]);
     expect(statSync(resolve(assetsRoot)).isDirectory()).toBe(true);
   });
 });
 
 describe("no second lifecycle model exists behind the contract", () => {
-  it("keeps every production layer free of a plugin-side rollback", () => {
+  it("keeps every production layer free of a service-side rollback", () => {
     const offenders = productionSources()
       .filter((file) => /rollback/i.test(file.source))
       .map((file) => file.path);
@@ -219,7 +219,7 @@ describe("no second lifecycle model exists behind the contract", () => {
     ]);
   });
 
-  it("defines exactly one reload handler on the plugin surface", () => {
+  it("defines exactly one reload handler on the service surface", () => {
     const handlers = productionSources().flatMap((file) =>
       [...file.source.matchAll(/^func\s+\([^)]*\)\s+handleReload\(/gm)].map(
         (match) => `${file.path}: ${match[0].trim()}`,
@@ -233,7 +233,7 @@ describe("no second lifecycle model exists behind the contract", () => {
     const handler = readFileSync(resolve(projectRoot, "presentation/handlers.go"), "utf8");
     const serveMetadata = /func \(set \*HandlerSet\) serveMetadata\([\s\S]*?\n}\n/.exec(handler)?.[0];
 
-    expect(serveMetadata, "the plugin surface has one metadata writer").toBeTruthy();
+    expect(serveMetadata, "the service surface has one metadata writer").toBeTruthy();
     expect(serveMetadata).toContain("set.writeDocument(writer, document.MediaType");
     expect(serveMetadata).not.toMatch("writeJSON");
     expect(serveMetadata).not.toMatch(/json\.Unmarsh/);
@@ -281,9 +281,9 @@ describe("no second lifecycle model exists behind the contract", () => {
 });
 
 describe("the SDK depends on nothing but its own domain", () => {
-  it("imports no Core, pluginprotocol, Caddy or third-party module", () => {
+  it("imports no Core, wool, Caddy or third-party module", () => {
     const module = readFileSync(resolve(projectRoot, "go.mod"), "utf8");
-    const allowed = /^module\s+github\.com\/Liapoldus\/plugin-sdk\/v2$/m;
+    const allowed = /^module\s+github\.com\/Liapoldus\/service-sdk\/v2$/m;
     const requirements = [...module.matchAll(/^require\s+(.*)$/gm)].flatMap((match) =>
       required(match[1]).trim().split(/\s+/),
     );
@@ -306,7 +306,7 @@ describe("the SDK depends on nothing but its own domain", () => {
         specs.push(required(spec[1]));
       }
       for (const imported of specs) {
-        const internal = imported.startsWith("github.com/Liapoldus/plugin-sdk/v2/");
+        const internal = imported.startsWith("github.com/Liapoldus/service-sdk/v2/");
         const foreign = !internal && imported.includes(".");
         if (foreign) {
           offenders.push(`${path} imports ${imported}`);

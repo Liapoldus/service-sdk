@@ -3,8 +3,8 @@ package models
 import "strings"
 
 // AdminActionInvocation is the product-neutral context Core authorizes for one
-// plugin Admin Surface action. Values are opaque identifiers; product meaning
-// remains with the plugin.
+// service Admin Surface action. Values are opaque identifiers; product meaning
+// remains with the service.
 type AdminActionInvocation struct {
 	CallerID       string `json:"callerId"`
 	InstanceID     string `json:"instanceId"`

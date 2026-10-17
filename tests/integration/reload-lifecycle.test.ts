@@ -210,7 +210,7 @@ describe("the exact-generation reload lifecycle", () => {
     }
   });
 
-  it("serves the same counters to Core and to the plugin's own surface", async () => {
+  it("serves the same counters to Core and to the service's own surface", async () => {
     const direct = await runtime.get(path("metrics"));
     const throughCore = await runtime.document<{ text?: string; failure?: string }>(
       fixture.documents.metrics,
@@ -310,7 +310,7 @@ describe("a refusal of the document Core announced", () => {
     expect(refused.body[fixture.keys.outcome]).toBe("documentMalformed");
   });
 
-  it("refuses a schema version the plugin does not own", async () => {
+  it("refuses a schema version the service does not own", async () => {
     const generation = "generation-other-schema";
     await runtime.publish({
       generation,
@@ -327,7 +327,7 @@ describe("a refusal of the document Core announced", () => {
     expect(refused.body[fixture.keys.outcome]).toBe("schemaVersionMismatch");
   });
 
-  it("refuses a document the plugin's own applier rejects, leaving the last one active", async () => {
+  it("refuses a document the service's own applier rejects, leaving the last one active", async () => {
     const before = (await runtime.state()).body;
     const refused = await runtime.reloadViaCore({
       ...active,
@@ -344,7 +344,7 @@ describe("a refusal of the document Core announced", () => {
   });
 });
 
-describe("the plugin-owned documents a replica serves", () => {
+describe("the service-owned documents a replica serves", () => {
   it("serves the manifest and the configuration schema verbatim", async () => {
     const manifest = await runtime.document<Record<string, unknown>>(fixture.documents.manifest);
     const schema = await runtime.document<Record<string, unknown>>(
@@ -352,9 +352,22 @@ describe("the plugin-owned documents a replica serves", () => {
     );
 
     expect(manifest.body.failure).toBe("");
-    expect(manifest.body.document).toEqual({ schemaVersion: fixture.schemaVersion, capabilities: [] });
+    expect(manifest.body.document).toMatchObject({
+      id: "reload-runtime-fixture",
+      version: "1.0.0",
+      sdkVersion: "service-sdk/v2",
+      manifestVersion: "service-runtime/v1",
+      configurationUI: {
+        version: "service-configuration-ui/v1",
+        groups: [{ id: "general", fields: [{ path: "/debug", widget: "toggle" }] }],
+      },
+    });
     expect(schema.body.failure).toBe("");
-    expect(schema.body.document).toEqual({ type: "object", additionalProperties: true });
+    expect(schema.body.document).toEqual({
+      type: "object",
+      properties: { debug: { type: "boolean" } },
+      additionalProperties: true,
+    });
   });
 
   it("serves the health answer the contract publishes", async () => {

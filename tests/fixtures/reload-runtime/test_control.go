@@ -4,10 +4,10 @@ package main
 //
 // This file is a test fixture and is never part of a production package. It is
 // the only plaintext listener in the fixture: the two production surfaces, the
-// plugin REST surface and the Core control API, are both mutual TLS only, and the
+// service REST surface and the Core control API, are both mutual TLS only, and the
 // fixture does not weaken either of them. This listener exists so a test harness
 // can drive scenarios the SDK itself never initiates, such as injecting a
-// Core-side pull failure, redeeming a grant twice, or asking what the plugin is
+// Core-side pull failure, redeeming a grant twice, or asking what the service is
 // currently serving. It runs on the loopback interface, it serves no contract
 // route, and it never writes a handle, a value or a document into its answers.
 
@@ -30,11 +30,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/interfaces"
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
-	"github.com/Liapoldus/plugin-sdk/v2/infrastructure"
-	"github.com/Liapoldus/plugin-sdk/v2/presentation"
-	"github.com/Liapoldus/plugin-sdk/v2/tests/support/process"
+	"github.com/Liapoldus/service-sdk/v2/domain/interfaces"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/infrastructure"
+	"github.com/Liapoldus/service-sdk/v2/presentation"
+	"github.com/Liapoldus/service-sdk/v2/tests/support/process"
 )
 
 var errTestControl = errors.New("test control operation refused")
@@ -48,33 +48,33 @@ var errTestControl = errors.New("test control operation refused")
 const testControlMaximumRequestBytes = 1 << 20
 
 // testControl is the harness control surface. It holds the pieces a scenario
-// needs: the fixture Core replica, the Core-side plugin client, the plugin's
-// secret use case and the plugin's own applier state.
+// needs: the fixture Core replica, the Core-side service client, the service's
+// secret use case and the service's own applier state.
 type testControl struct {
-	core              *testCore
-	contract          infrastructure.HTTPContract
-	client            *infrastructure.PluginClient
-	secrets           *testSecrets
-	applier           *testApplier
-	scenarios         *testScenarios
-	artifacts         *testArtifactReceiver
-	adminActions      *testAdminActions
-	artifactStatus    *testArtifactStatusOverride
-	pluginCredentials *infrastructure.Credentials
-	pluginTLSURL      string
-	handler           http.Handler
+	core               *testCore
+	contract           infrastructure.HTTPContract
+	client             *infrastructure.ServiceClient
+	secrets            *testSecrets
+	applier            *testApplier
+	scenarios          *testScenarios
+	artifacts          *testArtifactReceiver
+	adminActions       *testAdminActions
+	artifactStatus     *testArtifactStatusOverride
+	serviceCredentials *infrastructure.Credentials
+	serviceTLSURL      string
+	handler            http.Handler
 }
 
 // newTestControl builds the control mux.
 func newTestControl(core *testCore, contract infrastructure.HTTPContract,
-	client *infrastructure.PluginClient, secrets *testSecrets,
+	client *infrastructure.ServiceClient, secrets *testSecrets,
 	applier *testApplier, scenarios *testScenarios, artifacts *testArtifactReceiver,
 	adminActions *testAdminActions, artifactStatus *testArtifactStatusOverride,
-	pluginCredentials *infrastructure.Credentials, pluginTLSURL string) *testControl {
+	serviceCredentials *infrastructure.Credentials, serviceTLSURL string) *testControl {
 	control := &testControl{core: core, contract: contract, client: client,
 		secrets: secrets, applier: applier, scenarios: scenarios,
 		artifacts: artifacts, adminActions: adminActions, artifactStatus: artifactStatus,
-		pluginCredentials: pluginCredentials, pluginTLSURL: pluginTLSURL}
+		serviceCredentials: serviceCredentials, serviceTLSURL: serviceTLSURL}
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST "+testRouteControlReload, control.handleReload)
 	mux.HandleFunc("POST "+testRouteControlPublish, control.handlePublish)
@@ -163,12 +163,12 @@ func (control *testControl) handleArtifactProbes(w http.ResponseWriter, r *http.
 		{name: "artifact", mediaType: "application/gzip", body: []byte("x")},
 		{name: "extra", mediaType: "application/octet-stream", body: []byte("x")},
 	})
-	oversizedMetadata := []byte(`{"value":"` + strings.Repeat("a", int(control.contract.Plugin.ArtifactStream.MaximumMetadataBytes)-11) + `"}`)
+	oversizedMetadata := []byte(`{"value":"` + strings.Repeat("a", int(control.contract.Service.ArtifactStream.MaximumMetadataBytes)-11) + `"}`)
 	metadataOverLimit := control.directArtifact(r.Context(), []testArtifactPart{
 		{name: "metadata", mediaType: "application/json", body: oversizedMetadata},
 		{name: "artifact", mediaType: "application/gzip", body: []byte("x")},
 	})
-	metadataAtLimit := []byte(`{"value":"` + strings.Repeat("a", int(control.contract.Plugin.ArtifactStream.MaximumMetadataBytes)-12) + `"}`)
+	metadataAtLimit := []byte(`{"value":"` + strings.Repeat("a", int(control.contract.Service.ArtifactStream.MaximumMetadataBytes)-12) + `"}`)
 	metadataAtBoundary := control.directArtifact(r.Context(), []testArtifactPart{
 		{name: "metadata", mediaType: "application/json", body: metadataAtLimit},
 		{name: "artifact", mediaType: "application/gzip", body: []byte("x")},
@@ -182,7 +182,7 @@ func (control *testControl) handleArtifactProbes(w http.ResponseWriter, r *http.
 	}
 	earlyResult, earlyErr := control.client.ArtifactStream(r.Context(), invocation,
 		[]byte(`{"mode":"early"}`), "application/gzip", io.NopCloser(&repeatedByteReader{remaining: 4}))
-	earlyCallbackRejected := earlyErr != nil || earlyResult.StatusCode != control.contract.Plugin.ArtifactStream.AcceptedStatus
+	earlyCallbackRejected := earlyErr != nil || earlyResult.StatusCode != control.contract.Service.ArtifactStream.AcceptedStatus
 
 	ctx, cancel := context.WithCancel(r.Context())
 	blocked := &testBlockingArtifact{started: make(chan struct{}), closed: make(chan struct{})}
@@ -209,7 +209,7 @@ func (control *testControl) handleArtifactProbes(w http.ResponseWriter, r *http.
 		[]byte(`{"mode":"normal"}`), "application/gzip", io.NopCloser(strings.NewReader("x")))
 	_, oversizedArtifactErr := control.client.ArtifactStream(r.Context(), invocation,
 		[]byte(`{"mode":"normal"}`), "application/gzip",
-		io.NopCloser(&repeatedByteReader{remaining: control.contract.Plugin.ArtifactStream.MaximumArtifactBytes + 1}))
+		io.NopCloser(&repeatedByteReader{remaining: control.contract.Service.ArtifactStream.MaximumArtifactBytes + 1}))
 	control.write(w, http.StatusOK, map[string]any{
 		"wrongOrderStatus": wrongOrder.Status, "filenameStatus": withFilename.Status,
 		"extraPartStatus": withExtraPart.Status, "metadataOverLimitStatus": metadataOverLimit.Status,
@@ -274,14 +274,14 @@ func (control *testControl) directArtifact(ctx context.Context, parts []testArti
 	if err != nil {
 		return testArtifactResult{}
 	}
-	base, err := url.Parse(control.pluginTLSURL)
+	base, err := url.Parse(control.serviceTLSURL)
 	if err != nil {
 		return testArtifactResult{}
 	}
 	base.Path = endpoint.Path
 	transport := &http.Transport{TLSClientConfig: &tls.Config{
-		Certificates: []tls.Certificate{mustTestClientCertificate(control.pluginCredentials)},
-		RootCAs:      control.pluginCredentials.TrustPool(), ServerName: testServerName,
+		Certificates: []tls.Certificate{mustTestClientCertificate(control.serviceCredentials)},
+		RootCAs:      control.serviceCredentials.TrustPool(), ServerName: testServerName,
 	}}
 	defer transport.CloseIdleConnections()
 	client := &http.Client{Transport: transport, Timeout: 5 * time.Second}
@@ -294,7 +294,7 @@ func (control *testControl) directArtifact(ctx context.Context, parts []testArti
 		CallerID: "fixture-operator", InstanceID: testInstanceID, PageID: "sites", ActionID: "publish",
 		SurfaceDigest: "sha256:fixture-surface", IdempotencyKey: "fixture-idempotency", RequestID: "fixture-request",
 	}
-	for logical, header := range control.contract.Plugin.ArtifactStream.InvocationContext.Headers {
+	for logical, header := range control.contract.Service.ArtifactStream.InvocationContext.Headers {
 		value := map[string]string{
 			"callerId": invocation.CallerID, "instanceId": invocation.InstanceID,
 			"pageId": invocation.PageID, "actionId": invocation.ActionID,
@@ -310,7 +310,7 @@ func (control *testControl) directArtifact(ctx context.Context, parts []testArti
 		return testArtifactResult{}
 	}
 	defer process.Close(response.Body)
-	if _, err := io.Copy(io.Discard, io.LimitReader(response.Body, control.contract.Plugin.ArtifactStream.MaximumReceiptBytes+1)); err != nil {
+	if _, err := io.Copy(io.Discard, io.LimitReader(response.Body, control.contract.Service.ArtifactStream.MaximumReceiptBytes+1)); err != nil {
 		panic(err)
 	}
 	return testArtifactResult{Status: response.StatusCode}
@@ -420,7 +420,7 @@ func (control *testControl) handleAdminActionProbes(w http.ResponseWriter, r *ht
 		control.fail(w, errTestControl)
 		return
 	}
-	base, err := url.Parse(control.pluginTLSURL)
+	base, err := url.Parse(control.serviceTLSURL)
 	if err != nil {
 		control.fail(w, errTestControl)
 		return
@@ -432,9 +432,9 @@ func (control *testControl) handleAdminActionProbes(w http.ResponseWriter, r *ht
 	duplicate := control.adminDirectContext(r.Context(), base.String(), `{"mode":"normal"}`, true, map[string][]string{"Liapoldus-Caller": {"fixture-operator", "second"}})
 	unknown := control.adminDirectContext(r.Context(), base.String(), `{"mode":"normal"}`, true, map[string][]string{"Liapoldus-Unexpected": {"x"}})
 	callbackCalls := control.adminActions.calls.Load()
-	traversalURL := strings.Replace(control.pluginTLSURL+strings.Replace(endpoint.Path, "{page}", "%2e%2e", 1), "{action}", "list", 1)
+	traversalURL := strings.Replace(control.serviceTLSURL+strings.Replace(endpoint.Path, "{page}", "%2e%2e", 1), "{action}", "list", 1)
 	traversal := control.adminDirectContext(r.Context(), traversalURL, `{"mode":"normal"}`, true, nil)
-	oversized := control.adminDirectContext(r.Context(), base.String(), strings.Repeat(" ", int(control.contract.Plugin.AdminAction.MaximumRequestBytes+1)), true, nil)
+	oversized := control.adminDirectContext(r.Context(), base.String(), strings.Repeat(" ", int(control.contract.Service.AdminAction.MaximumRequestBytes+1)), true, nil)
 	receipt := control.adminDirectContext(r.Context(), base.String(), `{"mode":"oversized-receipt"}`, true, nil)
 	handlerError := control.adminDirectContext(r.Context(), base.String(), `{"mode":"handler-error"}`, true, nil)
 	cancelContext, cancel := context.WithCancel(r.Context())
@@ -475,11 +475,11 @@ func fixtureAdminInvocation() models.AdminActionInvocation {
 func (control *testControl) adminDirectContext(ctx context.Context, rawURL, body string, authenticate bool, extra map[string][]string) adminProbeResult {
 	transport := &http.Transport{}
 	if authenticate {
-		certificate, ok := control.pluginCredentials.ClientCertificate()
+		certificate, ok := control.serviceCredentials.ClientCertificate()
 		if !ok {
 			return adminProbeResult{}
 		}
-		transport.TLSClientConfig = &tls.Config{Certificates: []tls.Certificate{certificate}, RootCAs: control.pluginCredentials.TrustPool(), ServerName: testServerName}
+		transport.TLSClientConfig = &tls.Config{Certificates: []tls.Certificate{certificate}, RootCAs: control.serviceCredentials.TrustPool(), ServerName: testServerName}
 	}
 	defer transport.CloseIdleConnections()
 	client := &http.Client{Transport: transport, Timeout: 4 * time.Second}
@@ -487,9 +487,9 @@ func (control *testControl) adminDirectContext(ctx context.Context, rawURL, body
 	if err != nil {
 		return adminProbeResult{}
 	}
-	request.Header.Set("content-type", control.contract.Plugin.AdminAction.MediaType)
+	request.Header.Set("content-type", control.contract.Service.AdminAction.MediaType)
 	invocation := fixtureAdminInvocation()
-	for logical, header := range control.contract.Plugin.AdminAction.InvocationContext.Headers {
+	for logical, header := range control.contract.Service.AdminAction.InvocationContext.Headers {
 		value := map[string]string{"callerId": invocation.CallerID, "instanceId": invocation.InstanceID, "pageId": invocation.PageID,
 			"actionId": invocation.ActionID, "surfaceDigest": invocation.SurfaceDigest, "requestId": invocation.RequestID,
 			"idempotencyKey": invocation.IdempotencyKey, "ifMatch": invocation.IfMatch}[logical]
@@ -507,7 +507,7 @@ func (control *testControl) adminDirectContext(ctx context.Context, rawURL, body
 		return adminProbeResult{}
 	}
 	defer process.Close(response.Body)
-	contents, err := io.ReadAll(io.LimitReader(response.Body, control.contract.Plugin.AdminAction.MaximumResponseBytes+1))
+	contents, err := io.ReadAll(io.LimitReader(response.Body, control.contract.Service.AdminAction.MaximumResponseBytes+1))
 	if err != nil {
 		return adminProbeResult{}
 	}
@@ -515,13 +515,13 @@ func (control *testControl) adminDirectContext(ctx context.Context, rawURL, body
 }
 
 func (control *testControl) rejectAnonymousArtifactCall(ctx context.Context, endpoint infrastructure.Endpoint) bool {
-	base, err := url.Parse(control.pluginTLSURL)
+	base, err := url.Parse(control.serviceTLSURL)
 	if err != nil {
 		return false
 	}
 	base.Path = endpoint.Path
 	transport := &http.Transport{TLSClientConfig: &tls.Config{
-		RootCAs: control.pluginCredentials.TrustPool(), ServerName: testServerName,
+		RootCAs: control.serviceCredentials.TrustPool(), ServerName: testServerName,
 	}}
 	defer transport.CloseIdleConnections()
 	client := &http.Client{Transport: transport, Timeout: 2 * time.Second}
@@ -536,7 +536,7 @@ func (control *testControl) rejectAnonymousArtifactCall(ctx context.Context, end
 	return err != nil
 }
 
-// handleReload drives one Core-issued reload through the production plugin
+// handleReload drives one Core-issued reload through the production service
 // client, so the answer is the acknowledgement the contract publishes and the
 // status a Core would observe.
 func (control *testControl) handleReload(w http.ResponseWriter, r *http.Request) {
@@ -728,7 +728,7 @@ func (control *testControl) handleSecret(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-// handleState reports what the plugin is actually serving, which is how a
+// handleState reports what the service is actually serving, which is how a
 // scenario proves that a refused apply left the previous generation active.
 func (control *testControl) handleState(w http.ResponseWriter, r *http.Request) {
 	readiness, readinessErr := control.client.Readiness(r.Context())
@@ -754,7 +754,7 @@ func (control *testControl) handleState(w http.ResponseWriter, r *http.Request) 
 	control.write(w, http.StatusOK, document)
 }
 
-// handleDocument returns one plugin-owned document, so a scenario can check that
+// handleDocument returns one service-owned document, so a scenario can check that
 // the manifest and the configuration schema are served verbatim.
 func (control *testControl) handleDocument(w http.ResponseWriter, r *http.Request) {
 	var request struct {
@@ -946,7 +946,7 @@ func (control *testControl) handleDrops(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
-// handleConnections reports the plugin listener's own connection bookkeeping. The
+// handleConnections reports the service listener's own connection bookkeeping. The
 // read settles first, so a count is only published once it has stopped moving.
 func (control *testControl) handleConnections(w http.ResponseWriter, r *http.Request) {
 	var request struct{}
@@ -963,7 +963,7 @@ func (control *testControl) handleConnections(w http.ResponseWriter, r *http.Req
 	control.client.CloseIdleConnections()
 	connections := control.scenarios.inputs.connections
 	settled := connections.settle(
-		testSeconds(control.contract.Deadlines.PluginShutdownGraceSeconds) / testLoadDrainGraceDivisor)
+		testSeconds(control.contract.Deadlines.ServiceShutdownGraceSeconds) / testLoadDrainGraceDivisor)
 	control.write(w, http.StatusOK, map[string]any{
 		"operation": "connections",
 		"opened":    settled.opened,
@@ -1079,7 +1079,7 @@ func (control *testControl) handleLoad(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleReconnect measures one close race against the running plugin listener. It
+// handleReconnect measures one close race against the running service listener. It
 // takes no count: the number of connections is the scenario's own, and a harness
 // that could choose it could choose a number too small to race anything.
 func (control *testControl) handleReconnect(w http.ResponseWriter, r *http.Request) {

@@ -11,18 +11,18 @@ import (
 )
 
 var (
-	ErrInvalidHTTPContract = errors.New("invalid Plugin SDK HTTP contract")
-	ErrUnknownOutcome      = errors.New("unknown Plugin SDK contract outcome")
-	ErrContractMismatch    = errors.New("mismatched Plugin SDK contract version")
+	ErrInvalidHTTPContract = errors.New("invalid Service SDK HTTP contract")
+	ErrUnknownOutcome      = errors.New("unknown Service SDK contract outcome")
+	ErrContractMismatch    = errors.New("mismatched Service SDK contract version")
 )
 
-const expectedContractVersion = "liapoldus.plugin-sdk.http.v2"
+const expectedContractVersion = "liapoldus.service-sdk.http.v2"
 
 type HTTPContract struct {
 	ContractVersion   string                     `json:"contractVersion"`
 	TransportSecurity TransportSecurity          `json:"transportSecurity"`
 	Identity          IdentityContract           `json:"identity"`
-	Plugin            PluginContract             `json:"plugin"`
+	Service           ServiceContract            `json:"service"`
 	Core              CoreContract               `json:"core"`
 	Outcomes          OutcomesContract           `json:"outcomes"`
 	Problems          map[string]ProblemContract `json:"problems"`
@@ -64,7 +64,7 @@ type RegistrationContract struct {
 	Required     []string `json:"required"`
 }
 
-type PluginContract struct {
+type ServiceContract struct {
 	Responses             ResponseContract       `json:"responses"`
 	Endpoints             map[string]Endpoint    `json:"endpoints"`
 	ReloadRequest         DocumentContract       `json:"reloadRequest"`
@@ -206,16 +206,16 @@ type ProblemContract struct {
 }
 
 type DeadlinesContract struct {
-	PluginReloadSeconds         int `json:"pluginReloadSeconds"`
-	PluginReadinessSeconds      int `json:"pluginReadinessSeconds"`
+	ServiceReloadSeconds        int `json:"serviceReloadSeconds"`
+	ServiceReadinessSeconds     int `json:"serviceReadinessSeconds"`
 	CoreConfigPullSeconds       int `json:"coreConfigPullSeconds"`
 	CoreSecretGrantSeconds      int `json:"coreSecretGrantSeconds"`
 	CoreSecretRedemptionSeconds int `json:"coreSecretRedemptionSeconds"`
-	PluginReadHeaderSeconds     int `json:"pluginReadHeaderSeconds"`
-	PluginReadSeconds           int `json:"pluginReadSeconds"`
-	PluginWriteSeconds          int `json:"pluginWriteSeconds"`
-	PluginIdleSeconds           int `json:"pluginIdleSeconds"`
-	PluginShutdownGraceSeconds  int `json:"pluginShutdownGraceSeconds"`
+	ServiceReadHeaderSeconds    int `json:"serviceReadHeaderSeconds"`
+	ServiceReadSeconds          int `json:"serviceReadSeconds"`
+	ServiceWriteSeconds         int `json:"serviceWriteSeconds"`
+	ServiceIdleSeconds          int `json:"serviceIdleSeconds"`
+	ServiceShutdownGraceSeconds int `json:"serviceShutdownGraceSeconds"`
 	ClientResponseHeaderSeconds int `json:"clientResponseHeaderSeconds"`
 	ClientDialSeconds           int `json:"clientDialSeconds"`
 	ArtifactStreamSeconds       int `json:"artifactStreamSeconds"`
@@ -248,7 +248,7 @@ type Endpoint struct {
 // Every handler and client route must resolve its path through this accessor so
 // the code-owned definition stays the only source of route strings.
 func (contract HTTPContract) Endpoint(name string) (Endpoint, error) {
-	endpoint, ok := contract.Plugin.Endpoints[name]
+	endpoint, ok := contract.Service.Endpoints[name]
 	if !ok || endpoint.Method == "" || !strings.HasPrefix(endpoint.Path, "/") {
 		return Endpoint{}, fmt.Errorf("%w: endpoint %q", ErrInvalidHTTPContract, name)
 	}
@@ -257,8 +257,8 @@ func (contract HTTPContract) Endpoint(name string) (Endpoint, error) {
 
 // EndpointNames lists every registered endpoint name in stable order.
 func (contract HTTPContract) EndpointNames() []string {
-	names := make([]string, 0, len(contract.Plugin.Endpoints))
-	for name := range contract.Plugin.Endpoints {
+	names := make([]string, 0, len(contract.Service.Endpoints))
+	for name := range contract.Service.Endpoints {
 		names = append(names, name)
 	}
 	sort.Strings(names)
@@ -339,7 +339,7 @@ func LoadHTTPContract() (HTTPContract, error) {
 }
 
 func (contract HTTPContract) validate() error {
-	artifact := contract.Plugin.ArtifactStream
+	artifact := contract.Service.ArtifactStream
 	switch {
 	case contract.ContractVersion != expectedContractVersion:
 		return fmt.Errorf("%w: version %q", ErrContractMismatch, contract.ContractVersion)
@@ -349,27 +349,27 @@ func (contract HTTPContract) validate() error {
 		return fmt.Errorf("%w: client certificate requirement", ErrInvalidHTTPContract)
 	case !contract.TransportSecurity.PeerIdentity.RevocationFailClosed:
 		return fmt.Errorf("%w: revocation policy", ErrInvalidHTTPContract)
-	case len(contract.Plugin.Endpoints) == 0:
+	case len(contract.Service.Endpoints) == 0:
 		return fmt.Errorf("%w: endpoints", ErrInvalidHTTPContract)
-	case contract.Plugin.MaximumMetadataBytes <= 0,
-		contract.Plugin.ReloadRequest.MaximumBytes <= 0,
-		contract.Plugin.ReloadAcknowledgement.MaximumBytes <= 0,
-		contract.Plugin.Readiness.MaximumBytes <= 0,
-		contract.Plugin.Manifest.MaximumBytes <= 0,
-		contract.Plugin.ConfigurationSchema.MaximumBytes <= 0:
+	case contract.Service.MaximumMetadataBytes <= 0,
+		contract.Service.ReloadRequest.MaximumBytes <= 0,
+		contract.Service.ReloadAcknowledgement.MaximumBytes <= 0,
+		contract.Service.Readiness.MaximumBytes <= 0,
+		contract.Service.Manifest.MaximumBytes <= 0,
+		contract.Service.ConfigurationSchema.MaximumBytes <= 0:
 		return fmt.Errorf("%w: document limits", ErrInvalidHTTPContract)
-	case contract.Plugin.AdminSurface.MaximumBytes <= 0 || contract.Plugin.AdminSurface.DigestAlgorithm == "",
-		contract.Plugin.AdminAction.MaximumRequestBytes <= 0 || contract.Plugin.AdminAction.MaximumResponseBytes <= 0,
-		contract.Plugin.AdminAction.MaximumPageIDBytes <= 0 || contract.Plugin.AdminAction.MaximumActionIDBytes <= 0,
-		contract.Plugin.AdminAction.PathSegmentPattern == "" || contract.Plugin.AdminAction.DeadlineSeconds <= 0,
-		contract.Plugin.AdminAction.ResponseStatus.Minimum < 200 || contract.Plugin.AdminAction.ResponseStatus.Maximum > 599 ||
-			contract.Plugin.AdminAction.ResponseStatus.Minimum > contract.Plugin.AdminAction.ResponseStatus.Maximum,
-		contract.Plugin.AdminAction.InvocationContext.MaximumBytes <= 0 ||
-			contract.Plugin.AdminAction.InvocationContext.UnknownHeaderPrefix == "":
+	case contract.Service.AdminSurface.MaximumBytes <= 0 || contract.Service.AdminSurface.DigestAlgorithm == "",
+		contract.Service.AdminAction.MaximumRequestBytes <= 0 || contract.Service.AdminAction.MaximumResponseBytes <= 0,
+		contract.Service.AdminAction.MaximumPageIDBytes <= 0 || contract.Service.AdminAction.MaximumActionIDBytes <= 0,
+		contract.Service.AdminAction.PathSegmentPattern == "" || contract.Service.AdminAction.DeadlineSeconds <= 0,
+		contract.Service.AdminAction.ResponseStatus.Minimum < 200 || contract.Service.AdminAction.ResponseStatus.Maximum > 599 ||
+			contract.Service.AdminAction.ResponseStatus.Minimum > contract.Service.AdminAction.ResponseStatus.Maximum,
+		contract.Service.AdminAction.InvocationContext.MaximumBytes <= 0 ||
+			contract.Service.AdminAction.InvocationContext.UnknownHeaderPrefix == "":
 		return fmt.Errorf("%w: admin surface/action limits", ErrInvalidHTTPContract)
-	case contract.Plugin.Endpoints["adminAction"].Method == "" ||
-		!strings.Contains(contract.Plugin.Endpoints["adminAction"].Path, "{page}") ||
-		!strings.Contains(contract.Plugin.Endpoints["adminAction"].Path, "{action}"):
+	case contract.Service.Endpoints["adminAction"].Method == "" ||
+		!strings.Contains(contract.Service.Endpoints["adminAction"].Path, "{page}") ||
+		!strings.Contains(contract.Service.Endpoints["adminAction"].Path, "{action}"):
 		return fmt.Errorf("%w: admin action endpoint", ErrInvalidHTTPContract)
 	case artifact.MediaType == "" || artifact.MetadataMediaType == "" ||
 		artifact.MaximumArtifactBytes <= 0 || artifact.MinimumArtifactBytes <= 0 ||
@@ -400,8 +400,8 @@ func (contract HTTPContract) validate() error {
 		contract.Idempotency.RepeatOfActiveGeneration == "",
 		contract.Idempotency.ConflictingDescriptorForActiveGeneration == "":
 		return fmt.Errorf("%w: idempotency contract", ErrInvalidHTTPContract)
-	case contract.Deadlines.PluginReloadSeconds <= 0, contract.Deadlines.CoreConfigPullSeconds <= 0,
-		contract.Deadlines.ClientDialSeconds <= 0, contract.Deadlines.PluginWriteSeconds <= 0:
+	case contract.Deadlines.ServiceReloadSeconds <= 0, contract.Deadlines.CoreConfigPullSeconds <= 0,
+		contract.Deadlines.ClientDialSeconds <= 0, contract.Deadlines.ServiceWriteSeconds <= 0:
 		return fmt.Errorf("%w: deadlines", ErrInvalidHTTPContract)
 	case contract.Deadlines.ArtifactStreamSeconds <= 0:
 		return fmt.Errorf("%w: artifact stream deadline", ErrInvalidHTTPContract)
@@ -410,23 +410,23 @@ func (contract HTTPContract) validate() error {
 		return err
 	}
 	standard := newHTTPContract()
-	health, hasHealth := contract.Plugin.Endpoints["health"]
-	metrics, hasMetrics := contract.Plugin.Endpoints["metrics"]
-	standardHealth := standard.Plugin.Responses.Health
-	if !hasHealth || health != standard.Plugin.Endpoints["health"] ||
-		!hasMetrics || metrics != standard.Plugin.Endpoints["metrics"] ||
-		contract.Plugin.Responses.Health.Status != standardHealth.Status || len(contract.Plugin.Responses.Health.Body) != len(standardHealth.Body) ||
-		contract.Plugin.Responses.Health.Body["status"] != standardHealth.Body["status"] ||
-		contract.Plugin.Responses.ContentTypes != standard.Plugin.Responses.ContentTypes {
+	health, hasHealth := contract.Service.Endpoints["health"]
+	metrics, hasMetrics := contract.Service.Endpoints["metrics"]
+	standardHealth := standard.Service.Responses.Health
+	if !hasHealth || health != standard.Service.Endpoints["health"] ||
+		!hasMetrics || metrics != standard.Service.Endpoints["metrics"] ||
+		contract.Service.Responses.Health.Status != standardHealth.Status || len(contract.Service.Responses.Health.Body) != len(standardHealth.Body) ||
+		contract.Service.Responses.Health.Body["status"] != standardHealth.Body["status"] ||
+		contract.Service.Responses.ContentTypes != standard.Service.Responses.ContentTypes {
 		return fmt.Errorf("%w: universal SDK observability endpoints", ErrInvalidHTTPContract)
 	}
-	if err := validateAdminInvocationContract(contract.Plugin.AdminAction.InvocationContext); err != nil {
+	if err := validateAdminInvocationContract(contract.Service.AdminAction.InvocationContext); err != nil {
 		return err
 	}
-	if _, err := regexp.Compile(contract.Plugin.AdminAction.PathSegmentPattern); err != nil {
+	if _, err := regexp.Compile(contract.Service.AdminAction.PathSegmentPattern); err != nil {
 		return fmt.Errorf("%w: admin action path segment pattern", ErrInvalidHTTPContract)
 	}
-	for name := range contract.Plugin.Endpoints {
+	for name := range contract.Service.Endpoints {
 		if _, err := contract.Endpoint(name); err != nil {
 			return err
 		}

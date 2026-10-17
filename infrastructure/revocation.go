@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/interfaces"
+	"github.com/Liapoldus/service-sdk/v2/domain/interfaces"
 )
 
 var (
@@ -18,15 +18,15 @@ var (
 	// evaluated: nothing is configured, a configured list is unreadable, a list is
 	// unparsable, or a list is outside its validity window. It is always fatal,
 	// because the alternative would be admitting a peer that cannot be re-checked.
-	ErrRevocationUnavailable = errors.New("unavailable Plugin SDK revocation state")
+	ErrRevocationUnavailable = errors.New("unavailable Service SDK revocation state")
 	// ErrInvalidRevocationSet reports configured revocation material that is not
 	// usable as trust material, for example an unparsable list or a list that no
 	// trusted authority signed.
-	ErrInvalidRevocationSet = errors.New("invalid Plugin SDK revocation set")
+	ErrInvalidRevocationSet = errors.New("invalid Service SDK revocation set")
 	// ErrRevocationQueryRejected reports a revocation query for a certificate
 	// serial that cannot be evaluated. It is treated as a failure, never as an
 	// absent entry.
-	ErrRevocationQueryRejected = errors.New("rejected Plugin SDK revocation query")
+	ErrRevocationQueryRejected = errors.New("rejected Service SDK revocation query")
 )
 
 // RevocationPolicy selects how a replica behaves while the revocation set cannot
@@ -46,7 +46,7 @@ const (
 )
 
 // RevocationReloader is the optional rotation seam of a revocation source. The
-// plugin-side server calls it on refresh so a rotated list takes effect without
+// service-side server calls it on refresh so a rotated list takes effect without
 // restarting the process.
 type RevocationReloader interface {
 	Reload() error

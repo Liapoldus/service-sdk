@@ -6,18 +6,18 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
 )
 
 // ErrMissingHandlerDependency is returned by NewHandlerSet when one of the ports
 // a handler needs is absent. It names no port, path, address or document.
-var ErrMissingHandlerDependency = errors.New("missing Plugin SDK handler dependency")
+var ErrMissingHandlerDependency = errors.New("missing Service SDK handler dependency")
 
 // ErrIncompatibleMetricsExposition is returned when the metrics collector
 // announces a media type other than the one the contract serves, because
 // serving it would put a response on the wire that the contract does not
 // describe. It carries no value.
-var ErrIncompatibleMetricsExposition = errors.New("metrics exposition does not match the Plugin SDK contract media type")
+var ErrIncompatibleMetricsExposition = errors.New("metrics exposition does not match the Service SDK contract media type")
 
 // ArtifactInput is a bounded product-neutral artifact invocation. Metadata and
 // media type are supplied by Core after authorization; Body is streamed and
@@ -42,7 +42,7 @@ type ArtifactAcceptor interface {
 	AcceptArtifact(ctx context.Context, input ArtifactInput) (ArtifactResponse, error)
 }
 
-// AdminSurfaceProvider publishes the plugin-owned generic management descriptor
+// AdminSurfaceProvider publishes the service-owned generic management descriptor
 // as exact JSON bytes. The SDK bounds and validates the document but does not
 // interpret its schema or product fields.
 type AdminSurfaceProvider interface {
@@ -91,7 +91,7 @@ type RegistrationProvider interface {
 	Registration(contractVersion string) (models.Registration, error)
 }
 
-// MetadataProvider produces the two plugin-owned documents this layer publishes
+// MetadataProvider produces the two service-owned documents this layer publishes
 // verbatim: the manifest and the configuration schema. The bytes it returns are
 // the exact bytes that are written; this layer never decodes, reorders or
 // rewrites them, only checks that they are one JSON object within the contract
@@ -111,7 +111,7 @@ type MetricsExposition interface {
 	WriteText(writer io.Writer) error
 }
 
-// HandlerConfiguration is the whole set a plugin author must fill to publish the
+// HandlerConfiguration is the whole set a service author must fill to publish the
 // SDK REST surface. It pairs the injected contract with one value per port, and
 // holds no listener, address, certificate, key, token or product setting.
 type HandlerConfiguration struct {
@@ -129,7 +129,7 @@ type HandlerConfiguration struct {
 	// Metrics is the instrumentation collector.
 	Metrics MetricsExposition
 	// Artifacts handles the generic binary-action transport. It is optional for
-	// plugins that do not declare artifact actions in their own capabilities.
+	// services that do not declare artifact actions in their own capabilities.
 	Artifacts    ArtifactAcceptor
 	AdminSurface AdminSurfaceProvider
 	AdminActions AdminActionHandler
@@ -234,7 +234,7 @@ func (set *HandlerSet) routes() http.Handler {
 // context, so this one-line adapter lets an existing lifecycle be passed straight
 // in while the handler still bounds every readiness read with the contract
 // deadline. It is provided here so the composition root does not have to repeat
-// it for every plugin.
+// it for every service.
 func WithoutContext(read func() models.Readiness) ReadinessProvider {
 	return ReadinessProviderFunc(func(context.Context) models.Readiness { return read() })
 }

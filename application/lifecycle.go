@@ -5,23 +5,23 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/interfaces"
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/domain/interfaces"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
 )
 
 // ErrMissingLifecycleDependency is returned by NewLifecycle when a required port
 // or the lifecycle observer is absent. It names no port, endpoint, address,
 // document or configuration value.
-var ErrMissingLifecycleDependency = errors.New("plugin lifecycle dependency is required")
+var ErrMissingLifecycleDependency = errors.New("service lifecycle dependency is required")
 
 // LifecycleConfiguration carries the injected ports and the per-replica
-// identity of one manually started plugin process. It is product agnostic: no
+// identity of one manually started service process. It is product agnostic: no
 // field describes a setting, a capability or a public route.
 type LifecycleConfiguration struct {
 	// Source reads one exact immutable generation from Core over the private
 	// mutual-TLS control API.
 	Source interfaces.ConfigurationSource
-	// Applier is the plugin-owned validator and atomic applier. The SDK never
+	// Applier is the service-owned validator and atomic applier. The SDK never
 	// inspects a product field and never applies a document itself.
 	Applier interfaces.ConfigurationApplier
 	// Identity is the unique per-replica identity this process publishes.
@@ -32,9 +32,9 @@ type LifecycleConfiguration struct {
 	Observer interfaces.LifecycleObserver
 }
 
-// Lifecycle is the generic Core-to-plugin Reload use case of one plugin
+// Lifecycle is the generic Core-to-service Reload use case of one service
 // replica: pull the exact immutable generation, verify it, hand it to the
-// plugin-owned applier and acknowledge only what was actually activated.
+// service-owned applier and acknowledge only what was actually activated.
 //
 // The SDK holds no configuration document after an apply. It retains only the
 // descriptor of the generation it applied so that a repeat notification is
@@ -97,7 +97,7 @@ func NewLifecycle(configuration LifecycleConfiguration) (*Lifecycle, error) {
 // pulling again; refuse a descriptor that contradicts the active generation
 // without pulling; pull the exact generation; refuse a generation Core no
 // longer desires; verify generation, digest and schema version against both
-// the exact bytes and the announcement; and only then call the plugin applier.
+// the exact bytes and the announcement; and only then call the service applier.
 //
 // The SDK never retries or replays a pull or an apply of its own accord, never
 // applies a document whose digest was not verified, and never replaces the
@@ -174,7 +174,7 @@ func (lifecycle *Lifecycle) Reload(ctx context.Context, request models.Reload) (
 	return acknowledgement(request, true, models.OutcomeApplied), nil
 }
 
-// SecretGrantGeneration returns the generation to which a plugin-owned secret
+// SecretGrantGeneration returns the generation to which a service-owned secret
 // request may be bound. While Reload is applying a candidate, that exact
 // candidate is returned; otherwise the locally active generation is returned.
 // The candidate is visible only for the duration of the serialized Apply call,
@@ -217,7 +217,7 @@ type OutcomeError struct {
 
 // Error implements error with the outcome only.
 func (failure *OutcomeError) Error() string {
-	return "plugin lifecycle operation refused: " + string(failure.Outcome)
+	return "service lifecycle operation refused: " + string(failure.Outcome)
 }
 
 // Unwrap exposes the domain sentinel reason of the refusal, if any, so a caller

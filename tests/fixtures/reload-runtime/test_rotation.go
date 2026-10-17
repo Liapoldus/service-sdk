@@ -4,7 +4,7 @@ package main
 //
 // This file is a test fixture and is never part of a production package. It
 // builds a second mutual-TLS listener from the production file credentials
-// provider, so the rotation it performs is the rotation a plugin performs: the
+// provider, so the rotation it performs is the rotation a service performs: the
 // operator writes new material to disk, the provider re-reads it, and the
 // listener serves the replacement certificate on the next handshake. The
 // material lives in an owner-only directory that is removed when the scenario is
@@ -17,7 +17,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"github.com/Liapoldus/plugin-sdk/v2/tests/support/process"
+	"github.com/Liapoldus/service-sdk/v2/tests/support/process"
 	"net"
 	"net/http"
 	"os"
@@ -26,7 +26,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Liapoldus/plugin-sdk/v2/infrastructure"
+	"github.com/Liapoldus/service-sdk/v2/infrastructure"
 )
 
 // testRotation answers the two contract durations a rotation has to respect: how
@@ -44,7 +44,7 @@ const (
 // It is the contract's own shutdown grace and nothing more, so a listener that only
 // closes by running out its grace fails instead of passing slowly.
 func testRotationStopTimeout(contract infrastructure.HTTPContract) time.Duration {
-	return testSeconds(contract.Deadlines.PluginShutdownGraceSeconds)
+	return testSeconds(contract.Deadlines.ServiceShutdownGraceSeconds)
 }
 
 // testControlOperation is the trivial document the fixture's own scenario surfaces
@@ -85,7 +85,7 @@ func (rotation *testRotation) start(ctx context.Context) (string, error) {
 	if rotation.started {
 		return rotation.address, nil
 	}
-	directory, err := os.MkdirTemp("", "plugin-sdk-rotation-")
+	directory, err := os.MkdirTemp("", "service-sdk-rotation-")
 	if err != nil {
 		return "", fmt.Errorf("%w: %w", errTestRotation, err)
 	}
@@ -127,7 +127,7 @@ func (rotation *testRotation) start(ctx context.Context) (string, error) {
 	server, err := infrastructure.NewMutualTLSServer(rotation.contract, infrastructure.MutualTLSServerConfig{
 		Handler:    http.HandlerFunc(testRotationHandler),
 		Provider:   provider,
-		Peer:       rotation.identities.pluginPeer,
+		Peer:       rotation.identities.servicePeer,
 		Revocation: revocation,
 		Clock:      testClock{},
 	})
@@ -206,7 +206,7 @@ func (rotation *testRotation) stop(parent context.Context) (closed bool, removed
 // writeMaterial replaces the whole set of files the provider watches, so a
 // rotation is a rotation of every input rather than of one of them.
 func (rotation *testRotation) writeMaterial(serial int64) error {
-	leaf, err := testIssueLeaf(serial, testPluginCommonName, nil,
+	leaf, err := testIssueLeaf(serial, testServiceCommonName, nil,
 		[]x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}, testClock{}.Now(),
 		rotation.identities.authority, rotation.identities.authorityKey)
 	if err != nil {
@@ -216,15 +216,15 @@ func (rotation *testRotation) writeMaterial(serial int64) error {
 		name    string
 		content []byte
 	}{
-		{"ca.pem", rotation.identities.plugin.CABundle},
+		{"ca.pem", rotation.identities.service.CABundle},
 		{"server.pem", leaf.certificate},
 		{"server.key", leaf.key},
 		// The rotating surface is only ever dialled by this fixture and by a
-		// harness that already holds the live plugin client keypair, so the client
+		// harness that already holds the live service client keypair, so the client
 		// leg of the material is a copy of that live pair rather than a third
 		// keypair nobody uses.
-		{"client.pem", rotation.identities.plugin.ClientCertificatePEM},
-		{"client.key", rotation.identities.plugin.ClientKeyPEM},
+		{"client.pem", rotation.identities.service.ClientCertificatePEM},
+		{"client.key", rotation.identities.service.ClientKeyPEM},
 	}
 	for _, file := range files {
 		if err := os.WriteFile(filepath.Join(rotation.directory, file.name), file.content,

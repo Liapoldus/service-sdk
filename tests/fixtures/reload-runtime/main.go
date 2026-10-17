@@ -4,7 +4,7 @@ package main
 //
 // This file is a test fixture and is never part of a production package. It
 // wires the SDK's four production layers into one process that plays both roles
-// at once: the plugin replica, which serves the contract REST surface and pulls
+// at once: the service replica, which serves the contract REST surface and pulls
 // its configuration from Core, and the Core control plane, which publishes
 // immutable generations and brokers one-use secret grants.
 //
@@ -22,7 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/Liapoldus/plugin-sdk/v2/tests/support/process"
+	"github.com/Liapoldus/service-sdk/v2/tests/support/process"
 	"io"
 	"log"
 	"net"
@@ -33,11 +33,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Liapoldus/plugin-sdk/v2/application"
-	"github.com/Liapoldus/plugin-sdk/v2/domain/interfaces"
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
-	"github.com/Liapoldus/plugin-sdk/v2/infrastructure"
-	"github.com/Liapoldus/plugin-sdk/v2/presentation"
+	"github.com/Liapoldus/service-sdk/v2/application"
+	"github.com/Liapoldus/service-sdk/v2/domain/interfaces"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/infrastructure"
+	"github.com/Liapoldus/service-sdk/v2/presentation"
 )
 
 var errTestStart = errors.New("test fixture could not start")
@@ -82,8 +82,8 @@ const (
 	testControlMediaType               = "application/json"
 )
 
-// Fixture inputs. These are a plugin author's test data, not contract values: one
-// replica identity, one schema version, two plugin-owned documents, the four
+// Fixture inputs. These are a service author's test data, not contract values: one
+// replica identity, one schema version, two service-owned documents, the four
 // seeded generations, and the secret a scenario provisions.
 const (
 	testInstanceID    = "fixture-instance"
@@ -101,7 +101,7 @@ const (
 	testCorruptBase   = "generation-corrupt"
 
 	testLoopbackAddress = "127.0.0.1:0"
-	// testTrackedGrants bounds the plugin's local grant tracking and the Core
+	// testTrackedGrants bounds the service's local grant tracking and the Core
 	// broker's tracked redemptions. They are fixture resource bounds, chosen
 	// small because the fixture issues one grant at a time.
 	testTrackedGrants = 8
@@ -111,21 +111,20 @@ const (
 	testSecretPurpose     = "fixture-purpose"
 )
 
-// The two plugin-owned documents. The SDK publishes them verbatim and never
-// interprets a field, so their exact shape is the plugin's business.
+// The two service-owned documents. The SDK publishes them verbatim and never
+// interprets a field, so their exact shape is the service's business.
 const (
-	testManifestDocument = `{"schemaVersion":"fixture/v1","capabilities":[]}`
-	testSchemaDocument   = `{"type":"object","additionalProperties":true}`
+	testSchemaDocument = `{"type":"object","properties":{"debug":{"type":"boolean"}},"additionalProperties":true}`
 )
 
 // testReadyLine is the one line this fixture writes to stdout. A harness reads it
 // to learn the addresses, the seeded generation, and the two checks that have
 // already been performed. Everything else the process produces goes to stderr.
 type testReadyLine struct {
-	PluginURL                string `json:"pluginURL"`
+	ServiceURL               string `json:"serviceURL"`
 	ControlURL               string `json:"controlURL"`
 	CoreURL                  string `json:"coreURL"`
-	PluginHTTPSURL           string `json:"pluginHTTPSURL"`
+	ServiceHTTPSURL          string `json:"serviceHTTPSURL"`
 	Generation               string `json:"generation"`
 	Digest                   string `json:"digest"`
 	DuplicateDigest          string `json:"duplicateDigest"`
@@ -135,11 +134,11 @@ type testReadyLine struct {
 	MTLSRejectsWrongIdentity string `json:"mTLSRejectsWrongIdentity"`
 	MTLSRejectsExpired       string `json:"mTLSRejectsExpired"`
 	RejectsUnsafeControlURLs string `json:"rejectsUnsafeControlURLs"`
-	// The authority PEM and the PLUGIN client keypair are published so a harness
+	// The authority PEM and the SERVICE client keypair are published so a harness
 	// written in a language that owns its own TLS stack can verify the Core
-	// stand-in and authenticate to it, exactly as the SDK does. The plugin
+	// stand-in and authenticate to it, exactly as the SDK does. The service
 	// identity is the one published because the Core control server pins the
-	// plugin peer: a harness standing in for the Core replica must present the
+	// service peer: a harness standing in for the Core replica must present the
 	// credential Core would accept, or it can never observe Core's own response
 	// headers or its refusals. They belong to the throwaway authority this
 	// fixture generates in memory for one run and exist for no other purpose, so
@@ -180,16 +179,16 @@ func run() error {
 
 	// Every listener is bound before anything is announced, so a harness that
 	// reads the ready line can never race a port that does not exist yet.
-	pluginListener, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", testLoopbackAddress)
+	serviceListener, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", testLoopbackAddress)
 	if err != nil {
-		return fmt.Errorf("%w: plugin plaintext listener: %w", errTestStart, err)
+		return fmt.Errorf("%w: service plaintext listener: %w", errTestStart, err)
 	}
-	defer process.Close(pluginListener)
-	pluginTLSListener, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", testLoopbackAddress)
+	defer process.Close(serviceListener)
+	serviceTLSListener, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", testLoopbackAddress)
 	if err != nil {
-		return fmt.Errorf("%w: plugin mutual-TLS listener: %w", errTestStart, err)
+		return fmt.Errorf("%w: service mutual-TLS listener: %w", errTestStart, err)
 	}
-	defer process.Close(pluginTLSListener)
+	defer process.Close(serviceTLSListener)
 	coreListener, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", testLoopbackAddress)
 	if err != nil {
 		return fmt.Errorf("%w: Core listener: %w", errTestStart, err)
@@ -201,21 +200,21 @@ func run() error {
 	}
 	defer process.Close(controlListener)
 
-	pluginURL := "http://" + pluginListener.Addr().String()
-	pluginTLSURL := "https://" + pluginTLSListener.Addr().String()
+	serviceURL := "http://" + serviceListener.Addr().String()
+	serviceTLSURL := "https://" + serviceTLSListener.Addr().String()
 	coreURL := "https://" + coreListener.Addr().String()
 	controlURL := "http://" + controlListener.Addr().String()
 
-	// One credential set per role. The plugin's own material is what its server
+	// One credential set per role. The service's own material is what its server
 	// presents and what its client to Core presents, so the whole credential
 	// surface of the fixture is these two loaded sets and nothing else.
-	pluginCredentials, err := infrastructure.LoadCredentials(contract, identities.plugin)
+	serviceCredentials, err := infrastructure.LoadCredentials(contract, identities.service)
 	if err != nil {
-		return fmt.Errorf("%w: plugin credentials: %w", errTestStart, err)
+		return fmt.Errorf("%w: service credentials: %w", errTestStart, err)
 	}
-	pluginProvider, err := infrastructure.NewStaticCredentialsProvider(pluginCredentials)
+	serviceProvider, err := infrastructure.NewStaticCredentialsProvider(serviceCredentials)
 	if err != nil {
-		return fmt.Errorf("%w: plugin credentials: %w", errTestStart, err)
+		return fmt.Errorf("%w: service credentials: %w", errTestStart, err)
 	}
 	coreCredentials, err := infrastructure.LoadCredentials(contract, identities.core)
 	if err != nil {
@@ -228,9 +227,9 @@ func run() error {
 	// The revocation decision that gates a handshake comes from the same loaded
 	// authorities that admitted the chain, so trust and revocation are one
 	// decision rather than two that can disagree.
-	pluginRevocation, err := newTestRevocation(pluginCredentials, identities.revocation, clock)
+	serviceRevocation, err := newTestRevocation(serviceCredentials, identities.revocation, clock)
 	if err != nil {
-		return fmt.Errorf("%w: plugin revocation: %w", errTestStart, err)
+		return fmt.Errorf("%w: service revocation: %w", errTestStart, err)
 	}
 	coreRevocation, err := newTestRevocation(coreCredentials, identities.revocation, clock)
 	if err != nil {
@@ -275,24 +274,24 @@ func run() error {
 	}
 	fanout := application.Observers{recorder, observer}
 
-	// The plugin's client to Core. It dials the Core replica's own identity and
-	// presents the plugin's client certificate, and the Core side is built the
+	// The service's client to Core. It dials the Core replica's own identity and
+	// presents the service's client certificate, and the Core side is built the
 	// same way below with the roles exchanged.
-	pluginToCore, err := infrastructure.NewMutualTLSClient(contract, pluginProvider,
+	serviceToCore, err := infrastructure.NewMutualTLSClient(contract, serviceProvider,
 		infrastructure.MutualTLSClientConfig{
 			Peer:       identities.corePeer,
 			ServerName: testServerName,
-			Revocation: pluginRevocation,
+			Revocation: serviceRevocation,
 			Clock:      clock,
 		})
 	if err != nil {
-		return fmt.Errorf("%w: plugin to Core client: %w", errTestStart, err)
+		return fmt.Errorf("%w: service to Core client: %w", errTestStart, err)
 	}
-	source, err := infrastructure.NewCoreConfigurationSource(contract, coreURL, pluginToCore)
+	source, err := infrastructure.NewCoreConfigurationSource(contract, coreURL, serviceToCore)
 	if err != nil {
 		return fmt.Errorf("%w: configuration source: %w", errTestStart, err)
 	}
-	broker, err := infrastructure.NewCoreSecretBroker(contract, coreURL, pluginToCore,
+	broker, err := infrastructure.NewCoreSecretBroker(contract, coreURL, serviceToCore,
 		testTrackedGrants)
 	if err != nil {
 		return fmt.Errorf("%w: secret broker: %w", errTestStart, err)
@@ -334,18 +333,22 @@ func run() error {
 		return grant.Generation, nil
 	}
 
-	// The plugin's REST surface. Readiness is the lifecycle's own answer adapted to
+	// The service's REST surface. Readiness is the lifecycle's own answer adapted to
 	// the port the handler set declares, and registration is the lifecycle's
 	// document, which always advertises the contract this handler set answers for.
 	artifactReceiver := &testArtifactReceiver{}
 	artifactReceiver.started = make(chan struct{}, 1)
 	adminActions := &testAdminActions{started: make(chan struct{})}
+	metadata, err := newTestMetadata()
+	if err != nil {
+		return fmt.Errorf("%w: metadata provider: %w", errTestStart, err)
+	}
 	handlers, err := presentation.NewHandlerSet(presentation.HandlerConfiguration{
 		Contracts:    contracts,
 		Lifecycle:    lifecycle,
 		Readiness:    presentation.WithoutContext(lifecycle.Readiness),
 		Registration: testRegistrationOf(lifecycle),
-		Metadata:     testMetadata{},
+		Metadata:     metadata,
 		Metrics:      collector,
 		Artifacts:    artifactReceiver,
 		AdminSurface: testAdminMetadata{},
@@ -355,15 +358,15 @@ func run() error {
 		return fmt.Errorf("%w: handler set: %w", errTestStart, err)
 	}
 
-	// The Core replica. The production plugin-side server is reused symmetrically
-	// here, configured with the plugin's pinned identity instead of the Core's, so
-	// the Core control API is served by the same mutual-TLS policy the plugin
+	// The Core replica. The production service-side server is reused symmetrically
+	// here, configured with the service's pinned identity instead of the Core's, so
+	// the Core control API is served by the same mutual-TLS policy the service
 	// surface is rather than by a second hand-written TLS path.
 	coreServer, err := infrastructure.NewMutualTLSServer(contract,
 		infrastructure.MutualTLSServerConfig{
 			Handler:    core.handler,
 			Provider:   coreProvider,
-			Peer:       identities.pluginPeer,
+			Peer:       identities.servicePeer,
 			Revocation: coreRevocation,
 			ErrorLog:   log.New(io.Discard, "", 0),
 			Clock:      clock,
@@ -372,44 +375,44 @@ func run() error {
 		return fmt.Errorf("%w: Core server: %w", errTestStart, err)
 	}
 	// The connection-drop switch and the connection count both hang off the
-	// plugin's mutual-TLS listener only. The switch wraps the production handler
+	// service's mutual-TLS listener only. The switch wraps the production handler
 	// chain, so a dropped request is one the listener really accepted; the
 	// plaintext mirror keeps serving the same handler without the fault, so the
 	// two surfaces cannot drift.
 	drops := newTestDrops(handlers.Handler())
 	connections := &testConnections{}
-	pluginServer, err := infrastructure.NewMutualTLSServer(contract,
+	serviceServer, err := infrastructure.NewMutualTLSServer(contract,
 		infrastructure.MutualTLSServerConfig{
 			Handler:    drops,
-			Provider:   pluginProvider,
+			Provider:   serviceProvider,
 			Peer:       identities.corePeer,
-			Revocation: pluginRevocation,
+			Revocation: serviceRevocation,
 			ErrorLog:   log.New(io.Discard, "", 0),
 			Clock:      clock,
 		})
 	if err != nil {
-		return fmt.Errorf("%w: plugin server: %w", errTestStart, err)
+		return fmt.Errorf("%w: service server: %w", errTestStart, err)
 	}
-	pluginServer.Server().ConnState = connections.hook
+	serviceServer.Server().ConnState = connections.hook
 
-	// The Core-side client that drives the plugin. It is the same adapter a real
+	// The Core-side client that drives the service. It is the same adapter a real
 	// Core replica uses, over a client that presents the Core's own certificate
-	// and pins the plugin's identity.
-	coreToPluginTLS, err := infrastructure.NewMutualTLSClient(contract, coreProvider,
+	// and pins the service's identity.
+	coreToServiceTLS, err := infrastructure.NewMutualTLSClient(contract, coreProvider,
 		infrastructure.MutualTLSClientConfig{
-			Peer:       identities.pluginPeer,
+			Peer:       identities.servicePeer,
 			ServerName: testServerName,
 			Revocation: coreRevocation,
 			Clock:      clock,
 		})
 	if err != nil {
-		return fmt.Errorf("%w: Core to plugin transport: %w", errTestStart, err)
+		return fmt.Errorf("%w: Core to service transport: %w", errTestStart, err)
 	}
-	artifactStatus := &testArtifactStatusOverride{transport: coreToPluginTLS}
-	coreToPlugin, err := infrastructure.NewPluginClient(contract, pluginTLSURL,
-		artifactStatus, identities.pluginPeer)
+	artifactStatus := &testArtifactStatusOverride{transport: coreToServiceTLS}
+	coreToService, err := infrastructure.NewServiceClient(contract, serviceTLSURL,
+		artifactStatus, identities.servicePeer)
 	if err != nil {
-		return fmt.Errorf("%w: Core to plugin client: %w", errTestStart, err)
+		return fmt.Errorf("%w: Core to service client: %w", errTestStart, err)
 	}
 
 	generations, err := publishTestGenerations(core)
@@ -423,25 +426,25 @@ func run() error {
 
 	// The control surface drives the same SDK client and the same secret use case a
 	// Core would, so a scenario observes shipped behaviour rather than fixture
-	// behaviour. The issued handle is held by the plugin process, as a product
+	// behaviour. The issued handle is held by the service process, as a product
 	// would hold it in its own data path, and is never written to an answer.
 	// The scenarios a harness can ask for later. They are built here and started
 	// only on demand, so the rest of the fixture runs with exactly the listeners it
 	// always had.
 	scenarios := newTestScenarios(testScenarioInputs{
-		contract:         contract,
-		clock:            clock,
-		identities:       identities,
-		coreProvider:     coreProvider,
-		pluginProvider:   pluginProvider,
-		coreRevocation:   coreRevocation,
-		pluginRevocation: pluginRevocation,
-		drops:            drops,
-		connections:      connections,
-		pluginAddress:    pluginTLSURL,
-		readyPath:        readyEndpoint.Path,
+		contract:          contract,
+		clock:             clock,
+		identities:        identities,
+		coreProvider:      coreProvider,
+		serviceProvider:   serviceProvider,
+		coreRevocation:    coreRevocation,
+		serviceRevocation: serviceRevocation,
+		drops:             drops,
+		connections:       connections,
+		serviceAddress:    serviceTLSURL,
+		readyPath:         readyEndpoint.Path,
 	})
-	control := newTestControl(core, contract, coreToPlugin, newTestSecrets(secrets), applier, scenarios, artifactReceiver, adminActions, artifactStatus, coreCredentials, pluginTLSURL)
+	control := newTestControl(core, contract, coreToService, newTestSecrets(secrets), applier, scenarios, artifactReceiver, adminActions, artifactStatus, coreCredentials, serviceTLSURL)
 
 	unsafeControlRefused, err := testUnsafeControlRefused(contract)
 	if err != nil {
@@ -454,22 +457,22 @@ func run() error {
 	// their transport diagnostics nowhere.
 	plaintext := &http.Server{
 		Handler:           handlers.Handler(),
-		ReadHeaderTimeout: testSeconds(contract.Deadlines.PluginReadHeaderSeconds),
-		ReadTimeout:       testSeconds(contract.Deadlines.PluginReadSeconds),
-		WriteTimeout:      testSeconds(contract.Deadlines.PluginWriteSeconds),
-		IdleTimeout:       testSeconds(contract.Deadlines.PluginIdleSeconds),
+		ReadHeaderTimeout: testSeconds(contract.Deadlines.ServiceReadHeaderSeconds),
+		ReadTimeout:       testSeconds(contract.Deadlines.ServiceReadSeconds),
+		WriteTimeout:      testSeconds(contract.Deadlines.ServiceWriteSeconds),
+		IdleTimeout:       testSeconds(contract.Deadlines.ServiceIdleSeconds),
 		ErrorLog:          log.New(io.Discard, "", 0),
 	}
 	controlServer := &http.Server{
 		Handler:           control.handler,
-		ReadHeaderTimeout: testSeconds(contract.Deadlines.PluginReadHeaderSeconds),
+		ReadHeaderTimeout: testSeconds(contract.Deadlines.ServiceReadHeaderSeconds),
 		ErrorLog:          log.New(io.Discard, "", 0),
 	}
 
 	failures := make(chan error, 4)
-	go func() { failures <- ignoreClosed(pluginServer.Serve(pluginTLSListener)) }()
+	go func() { failures <- ignoreClosed(serviceServer.Serve(serviceTLSListener)) }()
 	go func() { failures <- ignoreClosed(coreServer.Serve(coreListener)) }()
-	go func() { failures <- ignoreClosed(plaintext.Serve(pluginListener)) }()
+	go func() { failures <- ignoreClosed(plaintext.Serve(serviceListener)) }()
 	go func() { failures <- ignoreClosed(controlServer.Serve(controlListener)) }()
 
 	// The check the ready line reports is performed after the listeners serve and
@@ -477,43 +480,43 @@ func run() error {
 	// for it. It runs after Serve on purpose: a probe against a bound but unserved
 	// listener would see a refused connection and could not tell that apart from a
 	// refused handshake.
-	anonymousRejected, err := testMutualTLSRejectsAnonymous(coreToPlugin,
-		pluginTLSListener.Addr().String(), readyEndpoint.Path,
-		contract.Plugin.Readiness.MaximumBytes, coreCredentials,
-		testSeconds(contract.Deadlines.PluginReadSeconds))
+	anonymousRejected, err := testMutualTLSRejectsAnonymous(coreToService,
+		serviceTLSListener.Addr().String(), readyEndpoint.Path,
+		contract.Service.Readiness.MaximumBytes, coreCredentials,
+		testSeconds(contract.Deadlines.ServiceReadSeconds))
 	if err != nil {
 		return fmt.Errorf("%w: %w", errTestStart, err)
 	}
 
-	revokedRejected, err := testMutualTLSRejectsRevoked(coreToPlugin,
-		pluginTLSListener.Addr().String(), readyEndpoint.Path,
-		contract.Plugin.Readiness.MaximumBytes, coreCredentials, identities.revoked,
-		testSeconds(contract.Deadlines.PluginReadSeconds))
+	revokedRejected, err := testMutualTLSRejectsRevoked(coreToService,
+		serviceTLSListener.Addr().String(), readyEndpoint.Path,
+		contract.Service.Readiness.MaximumBytes, coreCredentials, identities.revoked,
+		testSeconds(contract.Deadlines.ServiceReadSeconds))
 	if err != nil {
 		return fmt.Errorf("%w: %w", errTestStart, err)
 	}
 
-	wrongIdentityRejected, err := testMutualTLSRejectsWrongIdentity(coreToPlugin,
-		pluginTLSListener.Addr().String(), readyEndpoint.Path,
-		contract.Plugin.Readiness.MaximumBytes, coreCredentials, identities.impostor,
-		testSeconds(contract.Deadlines.PluginReadSeconds))
+	wrongIdentityRejected, err := testMutualTLSRejectsWrongIdentity(coreToService,
+		serviceTLSListener.Addr().String(), readyEndpoint.Path,
+		contract.Service.Readiness.MaximumBytes, coreCredentials, identities.impostor,
+		testSeconds(contract.Deadlines.ServiceReadSeconds))
 	if err != nil {
 		return fmt.Errorf("%w: %w", errTestStart, err)
 	}
 
-	expiredRejected, err := testMutualTLSRejectsExpired(coreToPlugin,
-		pluginTLSListener.Addr().String(), readyEndpoint.Path,
-		contract.Plugin.Readiness.MaximumBytes, coreCredentials, identities.expired,
-		testSeconds(contract.Deadlines.PluginReadSeconds))
+	expiredRejected, err := testMutualTLSRejectsExpired(coreToService,
+		serviceTLSListener.Addr().String(), readyEndpoint.Path,
+		contract.Service.Readiness.MaximumBytes, coreCredentials, identities.expired,
+		testSeconds(contract.Deadlines.ServiceReadSeconds))
 	if err != nil {
 		return fmt.Errorf("%w: %w", errTestStart, err)
 	}
 
 	ready, err := json.Marshal(testReadyLine{
-		PluginURL:                     pluginURL,
+		ServiceURL:                    serviceURL,
 		ControlURL:                    controlURL,
 		CoreURL:                       coreURL,
-		PluginHTTPSURL:                pluginTLSURL,
+		ServiceHTTPSURL:               serviceTLSURL,
 		Generation:                    generations.active,
 		Digest:                        generations.digest,
 		DuplicateDigest:               generations.duplicateDigest,
@@ -524,8 +527,8 @@ func run() error {
 		MTLSRejectsExpired:            testReadyFlag(expiredRejected),
 		RejectsUnsafeControlURLs:      testReadyFlag(unsafeControlRefused),
 		CABundlePEM:                   string(identities.core.CABundle),
-		CorePlaneClientCertificatePEM: string(identities.plugin.ClientCertificatePEM),
-		CorePlaneClientKeyPEM:         string(identities.plugin.ClientKeyPEM),
+		CorePlaneClientCertificatePEM: string(identities.service.ClientCertificatePEM),
+		CorePlaneClientKeyPEM:         string(identities.service.ClientKeyPEM),
 	})
 	if err != nil {
 		return fmt.Errorf("%w: ready line: %w", errTestStart, err)
@@ -551,18 +554,18 @@ func run() error {
 	// deadline, so the contract's grace period is applied per surface instead of
 	// to one process-wide stop.
 	shutdown, cancel := context.WithTimeout(context.Background(),
-		testSeconds(contract.Deadlines.PluginShutdownGraceSeconds))
+		testSeconds(contract.Deadlines.ServiceShutdownGraceSeconds))
 	defer cancel()
 	// A scenario listener a harness started and never stopped would otherwise stay
 	// bound past the process exit, so the scenarios are torn down with the rest of
 	// the surfaces rather than left for the operating system to reclaim.
 	scenarios.shutdown()
-	process.Must(pluginServer.GracefulShutdown(shutdown))
+	process.Must(serviceServer.GracefulShutdown(shutdown))
 	process.Must(coreServer.GracefulShutdown(shutdown))
 	process.Must(plaintext.Shutdown(shutdown))
 	process.Must(controlServer.Shutdown(shutdown))
-	coreToPlugin.CloseIdleConnections()
-	pluginToCore.CloseIdleConnections()
+	coreToService.CloseIdleConnections()
+	serviceToCore.CloseIdleConnections()
 	return nil
 }
 
@@ -600,7 +603,7 @@ func ignoreClosed(err error) error {
 // is the server's own requirement. A refused handshake is the expected answer; a
 // handshake that somehow succeeded would still not be enough, so the request
 // itself has to be refused too.
-func testMutualTLSRejectsAnonymous(client *infrastructure.PluginClient,
+func testMutualTLSRejectsAnonymous(client *infrastructure.ServiceClient,
 	address string, readyPath string, readyMaximum int64,
 	trust *infrastructure.Credentials, timeout time.Duration) (bool, error) {
 	authorities := trust.TrustAuthorities()
@@ -662,7 +665,7 @@ func testMutualTLSRejectsAnonymous(client *infrastructure.PluginClient,
 // gate is the only thing that can refuse it. A refusal is therefore evidence about
 // revocation specifically, which is why this check exists at all: Node never
 // consults a CRL, so a harness could not observe this handshake itself.
-func testMutualTLSRejectsRevoked(client *infrastructure.PluginClient,
+func testMutualTLSRejectsRevoked(client *infrastructure.ServiceClient,
 	address string, readyPath string, readyMaximum int64,
 	trust *infrastructure.Credentials, revoked infrastructure.CredentialsMaterial,
 	timeout time.Duration) (bool, error) {
@@ -682,7 +685,7 @@ func testMutualTLSRejectsRevoked(client *infrastructure.PluginClient,
 // either the common name or the URI: an impostor that got only one of them wrong
 // would be accepted on the other. A refusal is therefore evidence about the pinned
 // peer identity specifically.
-func testMutualTLSRejectsWrongIdentity(client *infrastructure.PluginClient,
+func testMutualTLSRejectsWrongIdentity(client *infrastructure.ServiceClient,
 	address string, readyPath string, readyMaximum int64,
 	trust *infrastructure.Credentials, impostor infrastructure.CredentialsMaterial,
 	timeout time.Duration) (bool, error) {
@@ -700,7 +703,7 @@ func testMutualTLSRejectsWrongIdentity(client *infrastructure.PluginClient,
 // expired leaf during the handshake, before the SDK's peer gate is consulted, and
 // that is a refusal by the live listener all the same: a caller cannot connect
 // with an expired peer either way.
-func testMutualTLSRejectsExpired(client *infrastructure.PluginClient,
+func testMutualTLSRejectsExpired(client *infrastructure.ServiceClient,
 	address string, readyPath string, readyMaximum int64,
 	trust *infrastructure.Credentials, expired infrastructure.CredentialsMaterial,
 	timeout time.Duration) (bool, error) {
@@ -717,7 +720,7 @@ func testMutualTLSRejectsExpired(client *infrastructure.PluginClient,
 // The positive probe is what makes the refusal meaningful. A refused connection to
 // a listener that was never proven live would prove nothing at all, so the check
 // is not allowed to report a flag it has not earned.
-func testMutualTLSRefusesCredential(client *infrastructure.PluginClient,
+func testMutualTLSRefusesCredential(client *infrastructure.ServiceClient,
 	address string, readyPath string, readyMaximum int64,
 	trust *infrastructure.Credentials, presented infrastructure.CredentialsMaterial,
 	timeout time.Duration) (bool, error) {
@@ -784,7 +787,7 @@ func testMutualTLSRefusesCredential(client *infrastructure.PluginClient,
 
 // testProbeReadiness performs the production readiness call and reports whether
 // the served listener answered it.
-func testProbeReadiness(client *infrastructure.PluginClient,
+func testProbeReadiness(client *infrastructure.ServiceClient,
 	timeout time.Duration) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -804,7 +807,7 @@ func testUnsafeControlRefused(contract infrastructure.HTTPContract) (bool, error
 		http.DefaultClient); err == nil {
 		return false, nil
 	}
-	if _, err := infrastructure.NewPluginClient(contract, plaintext, http.DefaultClient,
+	if _, err := infrastructure.NewServiceClient(contract, plaintext, http.DefaultClient,
 		models.PeerIdentity{CommonName: testCoreCommonName}); err == nil {
 		return false, nil
 	}
@@ -813,7 +816,7 @@ func testUnsafeControlRefused(contract infrastructure.HTTPContract) (bool, error
 
 // testRegistration adapts the lifecycle's registration document to the port the
 // handler set declares. The port asks for the document by the contract version,
-// so the plugin always advertises the contract it is actually answering for.
+// so the service always advertises the contract it is actually answering for.
 type testRegistration struct {
 	lifecycle *application.Lifecycle
 }
@@ -826,9 +829,9 @@ func testRegistrationOf(lifecycle *application.Lifecycle) presentation.Registrat
 	return testRegistration{lifecycle: lifecycle}
 }
 
-// testSecrets is the plugin-side view the control surface drives.
+// testSecrets is the service-side view the control surface drives.
 //
-// A real plugin keeps the handle it was issued where its own data path needs it.
+// A real service keeps the handle it was issued where its own data path needs it.
 // The fixture does the same, because the SDK's one-use decision is keyed by the
 // handle and cannot be observed otherwise. The handle is held here and is never
 // written to an answer, a log line, an error or the ready line.
@@ -843,7 +846,7 @@ func newTestSecrets(manager *application.SecretManager) *testSecrets {
 	return &testSecrets{manager: manager, handles: make(map[string]string)}
 }
 
-// classify reports one secret failure the way a plugin would report it to its own
+// classify reports one secret failure the way a service would report it to its own
 // operator: the contract outcome the use case itself resolved, and nothing else.
 //
 // The outcome is read through the accessor the presentation layer uses, so the
@@ -980,7 +983,7 @@ func publishTestGenerations(core *testCore) (testGenerationSet, error) {
 	// The apply-failure generation is byte-identical to the active one. It is a
 	// different generation of the same document, which is the honest way to reach a
 	// refusal that has to leave the previous generation active: the digest
-	// verifies, the plugin's own applier refuses, and nothing changes.
+	// verifies, the service's own applier refuses, and nothing changes.
 	if err := core.publish(testGeneration{
 		generation:      testApplyFailBase,
 		schemaVersion:   testSchemaVersion,
@@ -1013,8 +1016,8 @@ type testGenerationSet struct {
 	duplicateDigest string
 }
 
-// testDefaultDocument is the valid plugin configuration document. It is the
-// plugin's own payload; the SDK verifies and forwards it and never reads a field.
+// testDefaultDocument is the valid service configuration document. It is the
+// service's own payload; the SDK verifies and forwards it and never reads a field.
 func testDefaultDocument() string {
 	return `{"replica":"fixture","enabled":true,"items":[1,2,3]}` + "\n"
 }

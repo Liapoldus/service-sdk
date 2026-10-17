@@ -5,8 +5,8 @@ import (
 	"errors"
 	"sync/atomic"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/interfaces"
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/domain/interfaces"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
 )
 
 // Kind is the closed vocabulary of generic lifecycle events the SDK itself
@@ -27,12 +27,12 @@ const (
 // ErrMissingMetricsSink is returned by NewRecorder when no metrics sink is
 // configured. A recorder without a sink is a no-op that only hides the absence
 // of observability, so it is refused instead.
-var ErrMissingMetricsSink = errors.New("plugin metrics sink is required")
+var ErrMissingMetricsSink = errors.New("service metrics sink is required")
 
 // ErrInvalidRecorderConfiguration is returned by NewRecorder when the kind
 // allowlist or the kind length bound is unusable, which would leave label
 // cardinality unbounded.
-var ErrInvalidRecorderConfiguration = errors.New("invalid plugin lifecycle recorder configuration")
+var ErrInvalidRecorderConfiguration = errors.New("invalid service lifecycle recorder configuration")
 
 // MetricsSink is the narrow, dependency-free metrics port of the SDK. The SDK
 // defines no metric name, no help text and no exposition format: those belong
@@ -235,10 +235,10 @@ func (observer *LoggingObserver) Observe(ctx context.Context, kind string, outco
 		return
 	}
 	if isSuccessOutcome(outcome) {
-		observer.logger.Debug(ctx, "plugin lifecycle event", fields...)
+		observer.logger.Debug(ctx, "service lifecycle event", fields...)
 		return
 	}
-	observer.logger.Warn(ctx, "plugin lifecycle event refused", fields...)
+	observer.logger.Warn(ctx, "service lifecycle event refused", fields...)
 }
 
 // isSuccessOutcome reports whether an outcome is one of the success outcomes of

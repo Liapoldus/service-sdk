@@ -13,7 +13,7 @@ type testMetrics struct{}
 
 func (testMetrics) ContentType() string { return "text/plain; version=0.0.4; charset=utf-8" }
 func (testMetrics) WriteText(writer io.Writer) error {
-	_, err := io.WriteString(writer, "liapoldus_plugin_ready 1\n")
+	_, err := io.WriteString(writer, "liapoldus_service_ready 1\n")
 	return err
 }
 
@@ -61,12 +61,12 @@ func TestNewObservabilityHandlerProvidesUniversalHealthzAndMetrics(t *testing.T)
 	if err := response.Body.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if readErr != nil || response.StatusCode != http.StatusOK || response.Header.Get("Content-Type") != (testMetrics{}).ContentType() || !bytes.Equal(metricsBody, []byte("liapoldus_plugin_ready 1\n")) {
+	if readErr != nil || response.StatusCode != http.StatusOK || response.Header.Get("Content-Type") != (testMetrics{}).ContentType() || !bytes.Equal(metricsBody, []byte("liapoldus_service_ready 1\n")) {
 		t.Fatalf("metrics: status=%d type=%q body=%q err=%v", response.StatusCode, response.Header.Get("Content-Type"), metricsBody, readErr)
 	}
 }
 
-func TestNewObservabilityHandlerRejectsPluginSpecificRoutesAndResponses(t *testing.T) {
+func TestNewObservabilityHandlerRejectsServiceSpecificRoutesAndResponses(t *testing.T) {
 	base := ObservabilityConfiguration{
 		HealthEndpoint:  Endpoint{Method: http.MethodGet, Path: "/healthz"},
 		MetricsEndpoint: Endpoint{Method: http.MethodGet, Path: "/metrics"},
@@ -80,8 +80,8 @@ func TestNewObservabilityHandlerRejectsPluginSpecificRoutesAndResponses(t *testi
 		name   string
 		change func(*ObservabilityConfiguration)
 	}{
-		{name: "health path", change: func(value *ObservabilityConfiguration) { value.HealthEndpoint.Path = "/plugin/health" }},
-		{name: "metrics path", change: func(value *ObservabilityConfiguration) { value.MetricsEndpoint.Path = "/plugin/metrics" }},
+		{name: "health path", change: func(value *ObservabilityConfiguration) { value.HealthEndpoint.Path = "/service/health" }},
+		{name: "metrics path", change: func(value *ObservabilityConfiguration) { value.MetricsEndpoint.Path = "/service/metrics" }},
 		{name: "health body", change: func(value *ObservabilityConfiguration) { value.HealthBody = map[string]string{"healthy": "true"} }},
 		{name: "metrics media type", change: func(value *ObservabilityConfiguration) { value.ContentTypes.Metrics = "application/custom" }},
 	} {

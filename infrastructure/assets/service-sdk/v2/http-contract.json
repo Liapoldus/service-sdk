@@ -1,5 +1,5 @@
 {
-  "contractVersion": "liapoldus.plugin-sdk.http.v2",
+  "contractVersion": "liapoldus.service-sdk.http.v2",
   "transportSecurity": {
     "minimumTLSVersion": 772,
     "clientCertificateRequired": true,
@@ -31,7 +31,7 @@
       ]
     }
   },
-  "plugin": {
+  "service": {
     "responses": {
       "health": {
         "status": 200,
@@ -44,13 +44,13 @@
         "metrics": "text/plain; version=0.0.4; charset=utf-8"
       },
       "metrics": {
-        "readyMetricName": "liapoldus_plugin_ready",
-        "readyMetricHelp": "Whether the plugin has an active configuration generation.",
-        "lifecycleCounterName": "liapoldus_plugin_lifecycle_total",
-        "lifecycleCounterHelp": "Count of plugin lifecycle operations by kind and bounded outcome.",
+        "readyMetricName": "liapoldus_service_ready",
+        "readyMetricHelp": "Whether the service has an active configuration generation.",
+        "lifecycleCounterName": "liapoldus_service_lifecycle_total",
+        "lifecycleCounterHelp": "Count of service lifecycle operations by kind and bounded outcome.",
         "lifecycleCounterKindLabel": "kind",
         "lifecycleCounterOutcomeLabel": "outcome",
-        "pullFailureCounterName": "liapoldus_plugin_config_pull_failures_total",
+        "pullFailureCounterName": "liapoldus_service_config_pull_failures_total",
         "pullFailureCounterHelp": "Count of exact-generation configuration pull attempts that did not yield an applicable document."
       }
     },
@@ -231,7 +231,7 @@
   "core": {
     "configPull": {
       "method": "GET",
-      "pathTemplate": "/internal/v1/plugin-config/{generation}",
+      "pathTemplate": "/internal/v1/service-config/{generation}",
       "responseMediaType": "application/json",
       "maximumBytes": 262144,
       "requestMediaType": "application/json",
@@ -249,7 +249,7 @@
     "secretGrant": {
       "issue": {
         "method": "POST",
-        "pathTemplate": "/internal/v1/plugin-secret-grants",
+        "pathTemplate": "/internal/v1/service-secret-grants",
         "requestMediaType": "application/json",
         "responseMediaType": "application/json",
         "maximumRequestBytes": 4096,
@@ -262,7 +262,7 @@
       },
       "redemption": {
         "method": "POST",
-        "pathTemplate": "/internal/v1/plugin-secret-grants/{handle}/redemption",
+        "pathTemplate": "/internal/v1/service-secret-grants/{handle}/redemption",
         "requestMediaType": "application/json",
         "responseMediaType": "application/json",
         "maximumRequestBytes": 4096,
@@ -446,16 +446,16 @@
     }
   },
   "deadlines": {
-    "pluginReloadSeconds": 30,
-    "pluginReadinessSeconds": 5,
+    "serviceReloadSeconds": 30,
+    "serviceReadinessSeconds": 5,
     "coreConfigPullSeconds": 10,
     "coreSecretGrantSeconds": 10,
     "coreSecretRedemptionSeconds": 10,
-    "pluginReadHeaderSeconds": 5,
-    "pluginReadSeconds": 15,
-    "pluginWriteSeconds": 60,
-    "pluginIdleSeconds": 120,
-    "pluginShutdownGraceSeconds": 20,
+    "serviceReadHeaderSeconds": 5,
+    "serviceReadSeconds": 15,
+    "serviceWriteSeconds": 60,
+    "serviceIdleSeconds": 120,
+    "serviceShutdownGraceSeconds": 20,
     "clientResponseHeaderSeconds": 10,
     "clientDialSeconds": 10,
     "artifactStreamSeconds": 600

@@ -13,10 +13,10 @@ func TestCodeOwnedContractWireParity(t *testing.T) {
 		name, path string
 		value      any
 	}{
-		{"http", "assets/plugin-sdk/v2/http-contract.json", newHTTPContract()},
-		{"replica", "assets/plugin-sdk/v2/replica-lifecycle.json", newReplicaLifecycleContract()},
-		{"poll", "assets/plugin-sdk/v2/peer-directory-poll.json", newPeerDirectoryPollContract()},
-		{"loopback", "assets/plugin-sdk/v2/loopback-plaintext-profile.json", newLoopbackPlaintextProfile()},
+		{"http", "assets/service-sdk/v2/http-contract.json", newHTTPContract()},
+		{"replica", "assets/service-sdk/v2/replica-lifecycle.json", newReplicaLifecycleContract()},
+		{"poll", "assets/service-sdk/v2/peer-directory-poll.json", newPeerDirectoryPollContract()},
+		{"loopback", "assets/service-sdk/v2/loopback-plaintext-profile.json", newLoopbackPlaintextProfile()},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -44,19 +44,19 @@ func TestCodeOwnedContractWireParity(t *testing.T) {
 
 func TestHTTPContractRequiresUniversalSDKObservabilityEndpoints(t *testing.T) {
 	contract := newHTTPContract()
-	contract.Plugin.Endpoints["health"] = Endpoint{Method: "GET", Path: "/_liapoldus/v1/health"}
+	contract.Service.Endpoints["health"] = Endpoint{Method: "GET", Path: "/_liapoldus/v1/health"}
 	if err := contract.validate(); err == nil {
-		t.Fatal("accepted a plugin-specific health endpoint; the SDK contract must own GET /healthz")
+		t.Fatal("accepted a service-specific health endpoint; the SDK contract must own GET /healthz")
 	}
 
 	contract = newHTTPContract()
-	contract.Plugin.Endpoints["metrics"] = Endpoint{Method: "GET", Path: "/plugin/metrics"}
+	contract.Service.Endpoints["metrics"] = Endpoint{Method: "GET", Path: "/service/metrics"}
 	if err := contract.validate(); err == nil {
-		t.Fatal("accepted a plugin-specific metrics endpoint; the SDK contract must own GET /metrics")
+		t.Fatal("accepted a service-specific metrics endpoint; the SDK contract must own GET /metrics")
 	}
 
 	contract = newHTTPContract()
-	contract.Plugin.Responses.Health.Body = map[string]string{"status": "custom"}
+	contract.Service.Responses.Health.Body = map[string]string{"status": "custom"}
 	if err := contract.validate(); err == nil {
 		t.Fatal("accepted a product-specific health response; SDK health must be uniform")
 	}
@@ -164,7 +164,7 @@ func TestTypedContractValidation(t *testing.T) {
 			t.Fatal("accepted missing mTLS")
 		}
 		contract = newHTTPContract()
-		delete(contract.Plugin.Endpoints, "reload")
+		delete(contract.Service.Endpoints, "reload")
 		if _, err := contract.Endpoint("reload"); err == nil {
 			t.Fatal("resolved missing reload endpoint")
 		}

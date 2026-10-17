@@ -5,10 +5,10 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
 )
 
-var ErrInvalidPeerDirectoryPollContract = errors.New("invalid Plugin SDK peer-directory poll contract")
+var ErrInvalidPeerDirectoryPollContract = errors.New("invalid Service SDK peer-directory poll contract")
 
 type PeerDirectoryPollContract struct {
 	ContractVersion    string `json:"contractVersion"`
@@ -71,7 +71,7 @@ type PeerDirectoryPollContract struct {
 }
 
 // LoadPeerDirectoryPollContract returns the immutable versioned Core polling
-// contract used by one authenticated plugin replica.
+// contract used by one authenticated service replica.
 func LoadPeerDirectoryPollContract() (PeerDirectoryPollContract, error) {
 	contract := newPeerDirectoryPollContract()
 	if contract.Validate() != nil {
@@ -81,7 +81,7 @@ func LoadPeerDirectoryPollContract() (PeerDirectoryPollContract, error) {
 }
 
 func (contract PeerDirectoryPollContract) Validate() error {
-	if contract.ContractVersion != "liapoldus.plugin-sdk.peer-directory-poll.v1" ||
+	if contract.ContractVersion != "liapoldus.service-sdk.peer-directory-poll.v1" ||
 		!validContractMediaType(contract.ProblemMediaType) || !validContractMediaType(contract.DirectoryMediaType) ||
 		contract.ProblemMediaType != contract.DirectoryMediaType ||
 		!contract.TransportSecurity.TLSRequired || !contract.TransportSecurity.ClientCertificateRequired ||

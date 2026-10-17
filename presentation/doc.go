@@ -1,10 +1,10 @@
-// Package presentation is the versioned Plugin SDK REST surface: the only layer
+// Package presentation is the versioned Service SDK REST surface: the only layer
 // that turns an HTTP request into an application use case and an application
 // result back into an HTTP response.
 //
 // The layer owns transport, and nothing else. It reads the route, the media
 // type, the status, the code, the document limit and the deadline of every
-// answer from a contract value the plugin's composition root injected from the
+// answer from a contract value the service's composition root injected from the
 // versioned contract asset, so this package spells no path, status, code, media
 // type, limit or problem key that a second copy could disagree with. It parses
 // contract bytes, embeds an asset, listens on a port, or terminates TLS, and it
@@ -14,9 +14,9 @@
 //
 // Product configuration stays opaque to it. A Reload notification carries a
 // generation descriptor and never a document; the manifest and the
-// configuration schema are published as the exact bytes the plugin produced and
+// configuration schema are published as the exact bytes the service produced and
 // are only refused when they are not one JSON object or exceed the contract
-// limit; and the SDK calls the plugin's own validator and applier through the
+// limit; and the SDK calls the service's own validator and applier through the
 // injected lifecycle and acknowledges nothing it did not observe.
 //
 // Nothing it writes can disclose configuration, a secret, a grant handle, a

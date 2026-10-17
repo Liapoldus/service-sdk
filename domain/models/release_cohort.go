@@ -1,6 +1,6 @@
 package models
 
-// ReleaseCohortCompatible reports whether every release in one logical plugin
+// ReleaseCohortCompatible reports whether every release in one logical service
 // instance can safely coexist. Identical binary digests need no compatibility
 // claims. Different releases require explicit mutual acceptance of every
 // advertised contract version; an empty claim set is not evidence.

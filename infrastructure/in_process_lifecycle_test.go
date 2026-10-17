@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Liapoldus/plugin-sdk/v2/application"
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/application"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
 )
 
 type inProcessLifecycleApplier struct {
@@ -99,7 +99,7 @@ func TestInProcessReplicaPublishesAndReloadsThroughPublicAdapter(t *testing.T) {
 	if err != nil || !acknowledgement.Applied || replica.InstanceID() != "server" || replica.ReplicaID() != "replica-1" {
 		t.Fatalf("reload = %#v, err=%v, identity=%s/%s", acknowledgement, err, replica.InstanceID(), replica.ReplicaID())
 	}
-	registration, err := replica.Registration("plugin-sdk/v2")
+	registration, err := replica.Registration("service-sdk/v2")
 	if err != nil || registration.AppliedGeneration != active.Generation || !registration.Ready {
 		t.Fatalf("registration = %#v, err=%v", registration, err)
 	}

@@ -14,17 +14,17 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/interfaces"
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/domain/interfaces"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
 )
 
 var (
-	// ErrInvalidServerTLS rejects a plugin-side server configuration that cannot
+	// ErrInvalidServerTLS rejects a service-side server configuration that cannot
 	// enforce per-replica mutual TLS.
-	ErrInvalidServerTLS = errors.New("invalid Plugin SDK mutual TLS server configuration")
-	// ErrInvalidClientTLS rejects a plugin-to-Core client configuration that
+	ErrInvalidServerTLS = errors.New("invalid Service SDK mutual TLS server configuration")
+	// ErrInvalidClientTLS rejects a service-to-Core client configuration that
 	// cannot enforce per-replica mutual TLS.
-	ErrInvalidClientTLS = errors.New("invalid Plugin SDK mutual TLS client configuration")
+	ErrInvalidClientTLS = errors.New("invalid Service SDK mutual TLS client configuration")
 	// ErrPeerNotAuthorized rejects a verified peer that is not the single
 	// registered Core replica identity.
 	ErrPeerNotAuthorized = errors.New("peer is not the registered Core replica")
@@ -39,17 +39,17 @@ var (
 	ErrPeerRevocationUnknown = errors.New("peer certificate revocation could not be verified")
 	// ErrCredentialRotationFailed reports that rotated credential material could
 	// not be validated. The previously validated material stays in force.
-	ErrCredentialRotationFailed = errors.New("failed Plugin SDK credential rotation")
+	ErrCredentialRotationFailed = errors.New("failed Service SDK credential rotation")
 	// ErrShutdownGraceExpired reports that in-flight connections outlived the
 	// contract shutdown grace.
-	ErrShutdownGraceExpired = errors.New("server did not stop within the Plugin SDK contract shutdown grace")
+	ErrShutdownGraceExpired = errors.New("server did not stop within the Service SDK contract shutdown grace")
 	// ErrMutualTLSRedirect refuses an HTTP redirect on a control-plane call, so a
 	// redirect can never move a request to another origin with the replica
 	// credentials attached.
-	ErrMutualTLSRedirect = errors.New("refused Plugin SDK control-plane redirect")
+	ErrMutualTLSRedirect = errors.New("refused Service SDK control-plane redirect")
 )
 
-// MutualTLSServerConfig describes the plugin-side HTTPS server. The handler comes
+// MutualTLSServerConfig describes the service-side HTTPS server. The handler comes
 // from the presentation layer; everything below it is transport policy owned by
 // this package.
 type MutualTLSServerConfig struct {
@@ -58,7 +58,7 @@ type MutualTLSServerConfig struct {
 	// Provider supplies operator credential material and is the rotation seam, so
 	// a certificate rotated on disk reaches the next handshake.
 	Provider CredentialsProvider
-	// Peer is the one Core replica identity this plugin process accepts. It is
+	// Peer is the one Core replica identity this service process accepts. It is
 	// required: per-replica identity is never optional, never a set, and never a
 	// wildcard.
 	Peer models.PeerIdentity
@@ -75,7 +75,7 @@ type MutualTLSServerConfig struct {
 	Clock interfaces.Clock
 }
 
-// MutualTLSServer is the plugin-side HTTPS server. It requires and verifies a
+// MutualTLSServer is the service-side HTTPS server. It requires and verifies a
 // client certificate against the operator trust roots, applies the contract
 // minimum TLS version and deadlines, and then gates every handshake on a
 // fail-closed revocation check and on the single registered Core replica
@@ -102,7 +102,7 @@ type mutualTLSServerState struct {
 	config      *tls.Config
 }
 
-// NewMutualTLSServer builds the plugin-side HTTPS server. It refuses to build a
+// NewMutualTLSServer builds the service-side HTTPS server. It refuses to build a
 // server that would accept a client without a certificate, that has no
 // revocation source to fail closed with, or that has no single registered Core
 // peer identity.
@@ -133,7 +133,7 @@ func NewMutualTLSServer(contract HTTPContract, configuration MutualTLSServerConf
 			revocation: configuration.Revocation,
 			clock:      configuration.Clock,
 		},
-		grace: time.Duration(contract.Deadlines.PluginShutdownGraceSeconds) * time.Second,
+		grace: time.Duration(contract.Deadlines.ServiceShutdownGraceSeconds) * time.Second,
 	}
 	if err := mutualTLS.publish(credentials); err != nil {
 		return nil, ErrInvalidServerTLS
@@ -142,10 +142,10 @@ func NewMutualTLSServer(contract HTTPContract, configuration MutualTLSServerConf
 		Handler:           configuration.Handler,
 		TLSConfig:         mutualTLS.snapshot.Load().config,
 		ErrorLog:          configuration.ErrorLog,
-		ReadHeaderTimeout: time.Duration(contract.Deadlines.PluginReadHeaderSeconds) * time.Second,
-		ReadTimeout:       time.Duration(contract.Deadlines.PluginReadSeconds) * time.Second,
-		WriteTimeout:      time.Duration(contract.Deadlines.PluginWriteSeconds) * time.Second,
-		IdleTimeout:       time.Duration(contract.Deadlines.PluginIdleSeconds) * time.Second,
+		ReadHeaderTimeout: time.Duration(contract.Deadlines.ServiceReadHeaderSeconds) * time.Second,
+		ReadTimeout:       time.Duration(contract.Deadlines.ServiceReadSeconds) * time.Second,
+		WriteTimeout:      time.Duration(contract.Deadlines.ServiceWriteSeconds) * time.Second,
+		IdleTimeout:       time.Duration(contract.Deadlines.ServiceIdleSeconds) * time.Second,
 	}
 	return mutualTLS, nil
 }
@@ -395,9 +395,9 @@ func (gate *mutualTLSPeerGate) checkRevocation(leaf *x509.Certificate, verifiedC
 	return nil
 }
 
-// MutualTLSClientConfig describes the plugin-to-Core HTTPS client.
+// MutualTLSClientConfig describes the service-to-Core HTTPS client.
 type MutualTLSClientConfig struct {
-	// Peer is the one Core identity this plugin process dials. It is required.
+	// Peer is the one Core identity this service process dials. It is required.
 	Peer models.PeerIdentity
 	// ServerName is the name or address the Core replica presents its certificate
 	// under. It is required and is never written to a log or an error.
@@ -410,7 +410,7 @@ type MutualTLSClientConfig struct {
 
 // MutualTLSClient dials Core over mutual TLS. The transport is rebuilt from the
 // credentials currently in force on every new connection, so a rotation on disk
-// reaches the next call without restarting the plugin process.
+// reaches the next call without restarting the service process.
 type MutualTLSClient struct {
 	contract   HTTPContract
 	provider   CredentialsProvider
@@ -427,7 +427,7 @@ type mutualTLSClientState struct {
 	config      *tls.Config
 }
 
-// NewMutualTLSClient builds the plugin-to-Core client over a credential provider.
+// NewMutualTLSClient builds the service-to-Core client over a credential provider.
 // The client is HTTPS-only: there is no plaintext or bearer-only path to
 // downgrade to.
 func NewMutualTLSClient(contract HTTPContract, provider CredentialsProvider, configuration MutualTLSClientConfig) (*MutualTLSClient, error) {
@@ -470,7 +470,7 @@ func NewMutualTLSClient(contract HTTPContract, provider CredentialsProvider, con
 		},
 		ResponseHeaderTimeout: time.Duration(contract.Deadlines.ClientResponseHeaderSeconds) * time.Second,
 		ExpectContinueTimeout: time.Duration(contract.Deadlines.ClientDialSeconds) * time.Second,
-		IdleConnTimeout:       time.Duration(contract.Deadlines.PluginIdleSeconds) * time.Second,
+		IdleConnTimeout:       time.Duration(contract.Deadlines.ServiceIdleSeconds) * time.Second,
 	}
 	mutualTLS.client = &http.Client{
 		Transport: mutualTLS.transport,

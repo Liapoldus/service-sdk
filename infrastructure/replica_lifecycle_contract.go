@@ -6,10 +6,10 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
 )
 
-var ErrInvalidReplicaLifecycleContract = errors.New("invalid Plugin SDK replica lifecycle contract")
+var ErrInvalidReplicaLifecycleContract = errors.New("invalid Service SDK replica lifecycle contract")
 
 type ReplicaLifecycleEndpoint struct {
 	Method string `json:"method"`

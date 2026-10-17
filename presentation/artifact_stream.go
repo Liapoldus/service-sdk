@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
 )
 
 type countedReader struct {

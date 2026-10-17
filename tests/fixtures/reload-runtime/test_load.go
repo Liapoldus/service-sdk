@@ -15,16 +15,16 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/Liapoldus/plugin-sdk/v2/tests/support/process"
+	"github.com/Liapoldus/service-sdk/v2/tests/support/process"
 	"io"
 	"net"
 	"net/http"
 	"sync"
 	"time"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/interfaces"
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
-	"github.com/Liapoldus/plugin-sdk/v2/infrastructure"
+	"github.com/Liapoldus/service-sdk/v2/domain/interfaces"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/infrastructure"
 )
 
 // testLoadDocument is the fixed document the load surface serves to a request
@@ -54,9 +54,9 @@ var (
 	errTestLoadBig = errors.New("test load response exceeded the fixture's read bound")
 )
 
-// testLoad owns the lifetime of the loaded surface. The surface plays the plugin
-// side of the contract, so it is served with the plugin's credentials and pins the
-// Core replica, and it is dialled with the Core's credentials pinning the plugin.
+// testLoad owns the lifetime of the loaded surface. The surface plays the service
+// side of the contract, so it is served with the service's credentials and pins the
+// Core replica, and it is dialled with the Core's credentials pinning the service.
 // Those are the credentials the running fixture already uses, so the drain is
 // observed through the same material a real exchange would use.
 type testLoad struct {
@@ -99,7 +99,7 @@ type testDrainReport struct {
 // drainBound is the wall clock a drain is given. It comes from the contract's own
 // shutdown grace rather than from a number chosen for a test.
 func (load *testLoad) drainBound() time.Duration {
-	return testSeconds(load.contract.Deadlines.PluginShutdownGraceSeconds) / testLoadDrainGraceDivisor
+	return testSeconds(load.contract.Deadlines.ServiceShutdownGraceSeconds) / testLoadDrainGraceDivisor
 }
 
 // start builds the loaded surface: a production mutual-TLS listener served by a
@@ -173,8 +173,8 @@ func (load *testLoad) handle(w http.ResponseWriter, _ *http.Request) {
 }
 
 // dialer builds the production client that stands in for the Core replica on the
-// load surface. The pinned peer is the plugin's, because the load surface plays
-// the plugin side of the contract.
+// load surface. The pinned peer is the service's, because the load surface plays
+// the service side of the contract.
 func (load *testLoad) dialer() (*infrastructure.MutualTLSClient, error) {
 	return infrastructure.NewMutualTLSClient(load.contract, load.clientProvider,
 		infrastructure.MutualTLSClientConfig{

@@ -1,6 +1,6 @@
 package models
 
-// Registration is the bootstrap identity document a plugin publishes so that
+// Registration is the bootstrap identity document a service publishes so that
 // Core can reconcile a reconnected replica without a management write.
 type Registration struct {
 	ContractVersion   string `json:"contractVersion"`

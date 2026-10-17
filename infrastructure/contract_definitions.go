@@ -17,21 +17,21 @@ func newHTTPContract() HTTPContract {
 	contract.Identity.Registration.MediaType = "application/json"
 	contract.Identity.Registration.MaximumBytes = 4096
 	contract.Identity.Registration.Required = []string{"contractVersion", "instanceId", "replicaId", "appliedGeneration", "ready"}
-	contract.Plugin.Responses.Health.Status = 200
-	contract.Plugin.Responses.Health.Body = map[string]string{
+	contract.Service.Responses.Health.Status = 200
+	contract.Service.Responses.Health.Body = map[string]string{
 		"status": "ok",
 	}
-	contract.Plugin.Responses.ContentTypes.JSON = "application/json"
-	contract.Plugin.Responses.ContentTypes.Metrics = "text/plain; version=0.0.4; charset=utf-8"
-	contract.Plugin.Responses.Metrics.ReadyMetricName = "liapoldus_plugin_ready"
-	contract.Plugin.Responses.Metrics.ReadyMetricHelp = "Whether the plugin has an active configuration generation."
-	contract.Plugin.Responses.Metrics.LifecycleCounterName = "liapoldus_plugin_lifecycle_total"
-	contract.Plugin.Responses.Metrics.LifecycleCounterHelp = "Count of plugin lifecycle operations by kind and bounded outcome."
-	contract.Plugin.Responses.Metrics.LifecycleCounterKindLabel = "kind"
-	contract.Plugin.Responses.Metrics.LifecycleCounterOutcomeLabel = "outcome"
-	contract.Plugin.Responses.Metrics.PullFailureCounterName = "liapoldus_plugin_config_pull_failures_total"
-	contract.Plugin.Responses.Metrics.PullFailureCounterHelp = "Count of exact-generation configuration pull attempts that did not yield an applicable document."
-	contract.Plugin.Endpoints = map[string]Endpoint{
+	contract.Service.Responses.ContentTypes.JSON = "application/json"
+	contract.Service.Responses.ContentTypes.Metrics = "text/plain; version=0.0.4; charset=utf-8"
+	contract.Service.Responses.Metrics.ReadyMetricName = "liapoldus_service_ready"
+	contract.Service.Responses.Metrics.ReadyMetricHelp = "Whether the service has an active configuration generation."
+	contract.Service.Responses.Metrics.LifecycleCounterName = "liapoldus_service_lifecycle_total"
+	contract.Service.Responses.Metrics.LifecycleCounterHelp = "Count of service lifecycle operations by kind and bounded outcome."
+	contract.Service.Responses.Metrics.LifecycleCounterKindLabel = "kind"
+	contract.Service.Responses.Metrics.LifecycleCounterOutcomeLabel = "outcome"
+	contract.Service.Responses.Metrics.PullFailureCounterName = "liapoldus_service_config_pull_failures_total"
+	contract.Service.Responses.Metrics.PullFailureCounterHelp = "Count of exact-generation configuration pull attempts that did not yield an applicable document."
+	contract.Service.Endpoints = map[string]Endpoint{
 		"adminAction":    {Method: "POST", Path: "/_liapoldus/v1/admin-action/{page}/{action}"},
 		"adminSurface":   {Method: "GET", Path: "/_liapoldus/v1/admin-surface"},
 		"artifactStream": {Method: "POST", Path: "/_liapoldus/v1/artifact-stream"},
@@ -43,43 +43,43 @@ func newHTTPContract() HTTPContract {
 		"ready":          {Method: "GET", Path: "/_liapoldus/v1/ready"},
 		"reload":         {Method: "POST", Path: "/_liapoldus/v1/reload"},
 	}
-	contract.Plugin.ReloadRequest.MediaType = "application/json"
-	contract.Plugin.ReloadRequest.MaximumBytes = 4096
-	contract.Plugin.ReloadRequest.Required = []string{"generation", "sha256", "schemaVersion"}
-	contract.Plugin.ReloadRequest.DigestAlgorithm = ""
-	contract.Plugin.ReloadAcknowledgement.MediaType = "application/json"
-	contract.Plugin.ReloadAcknowledgement.MaximumBytes = 4096
-	contract.Plugin.ReloadAcknowledgement.Required = []string{"generation", "sha256", "schemaVersion", "applied", "outcome"}
-	contract.Plugin.ReloadAcknowledgement.DigestAlgorithm = ""
-	contract.Plugin.Readiness.MediaType = "application/json"
-	contract.Plugin.Readiness.MaximumBytes = 4096
-	contract.Plugin.Readiness.Required = []string{"ready", "generation", "sha256", "schemaVersion", "pendingGeneration", "instanceId", "replicaId"}
-	contract.Plugin.Readiness.DigestAlgorithm = ""
-	contract.Plugin.Manifest.MediaType = "application/json"
-	contract.Plugin.Manifest.MaximumBytes = 262144
-	contract.Plugin.Manifest.Required = nil
-	contract.Plugin.Manifest.DigestAlgorithm = ""
-	contract.Plugin.ConfigurationSchema.MediaType = "application/json"
-	contract.Plugin.ConfigurationSchema.MaximumBytes = 262144
-	contract.Plugin.ConfigurationSchema.Required = nil
-	contract.Plugin.ConfigurationSchema.DigestAlgorithm = ""
-	contract.Plugin.MaximumMetadataBytes = 262144
-	contract.Plugin.ArtifactStream.MediaType = "multipart/form-data"
-	contract.Plugin.ArtifactStream.MetadataMediaType = "application/json"
-	contract.Plugin.ArtifactStream.Parts = []string{"metadata", "artifact"}
-	contract.Plugin.ArtifactStream.PartOrder = []string{"metadata", "artifact"}
-	contract.Plugin.ArtifactStream.MaximumArtifactBytes = 134217728
-	contract.Plugin.ArtifactStream.MinimumArtifactBytes = 1
-	contract.Plugin.ArtifactStream.MaximumMetadataBytes = 65536
-	contract.Plugin.ArtifactStream.MaximumMultipartOverheadBytes = 65536
-	contract.Plugin.ArtifactStream.MaximumRequestBytes = 134348800
-	contract.Plugin.ArtifactStream.MaximumReceiptBytes = 4096
-	contract.Plugin.ArtifactStream.AcceptedStatus = 202
-	contract.Plugin.ArtifactStream.FilenameForwarded = false
-	contract.Plugin.ArtifactStream.InvocationContext.MaximumBytes = 8192
-	contract.Plugin.ArtifactStream.InvocationContext.Required = []string{"callerId", "instanceId", "pageId", "actionId", "surfaceDigest", "idempotencyKey", "requestId"}
-	contract.Plugin.ArtifactStream.InvocationContext.Optional = []string{"ifMatch"}
-	contract.Plugin.ArtifactStream.InvocationContext.Headers = map[string]string{
+	contract.Service.ReloadRequest.MediaType = "application/json"
+	contract.Service.ReloadRequest.MaximumBytes = 4096
+	contract.Service.ReloadRequest.Required = []string{"generation", "sha256", "schemaVersion"}
+	contract.Service.ReloadRequest.DigestAlgorithm = ""
+	contract.Service.ReloadAcknowledgement.MediaType = "application/json"
+	contract.Service.ReloadAcknowledgement.MaximumBytes = 4096
+	contract.Service.ReloadAcknowledgement.Required = []string{"generation", "sha256", "schemaVersion", "applied", "outcome"}
+	contract.Service.ReloadAcknowledgement.DigestAlgorithm = ""
+	contract.Service.Readiness.MediaType = "application/json"
+	contract.Service.Readiness.MaximumBytes = 4096
+	contract.Service.Readiness.Required = []string{"ready", "generation", "sha256", "schemaVersion", "pendingGeneration", "instanceId", "replicaId"}
+	contract.Service.Readiness.DigestAlgorithm = ""
+	contract.Service.Manifest.MediaType = "application/json"
+	contract.Service.Manifest.MaximumBytes = 262144
+	contract.Service.Manifest.Required = nil
+	contract.Service.Manifest.DigestAlgorithm = ""
+	contract.Service.ConfigurationSchema.MediaType = "application/json"
+	contract.Service.ConfigurationSchema.MaximumBytes = 262144
+	contract.Service.ConfigurationSchema.Required = nil
+	contract.Service.ConfigurationSchema.DigestAlgorithm = ""
+	contract.Service.MaximumMetadataBytes = 262144
+	contract.Service.ArtifactStream.MediaType = "multipart/form-data"
+	contract.Service.ArtifactStream.MetadataMediaType = "application/json"
+	contract.Service.ArtifactStream.Parts = []string{"metadata", "artifact"}
+	contract.Service.ArtifactStream.PartOrder = []string{"metadata", "artifact"}
+	contract.Service.ArtifactStream.MaximumArtifactBytes = 134217728
+	contract.Service.ArtifactStream.MinimumArtifactBytes = 1
+	contract.Service.ArtifactStream.MaximumMetadataBytes = 65536
+	contract.Service.ArtifactStream.MaximumMultipartOverheadBytes = 65536
+	contract.Service.ArtifactStream.MaximumRequestBytes = 134348800
+	contract.Service.ArtifactStream.MaximumReceiptBytes = 4096
+	contract.Service.ArtifactStream.AcceptedStatus = 202
+	contract.Service.ArtifactStream.FilenameForwarded = false
+	contract.Service.ArtifactStream.InvocationContext.MaximumBytes = 8192
+	contract.Service.ArtifactStream.InvocationContext.Required = []string{"callerId", "instanceId", "pageId", "actionId", "surfaceDigest", "idempotencyKey", "requestId"}
+	contract.Service.ArtifactStream.InvocationContext.Optional = []string{"ifMatch"}
+	contract.Service.ArtifactStream.InvocationContext.Headers = map[string]string{
 		"actionId":       "Liapoldus-Action",
 		"callerId":       "Liapoldus-Caller",
 		"idempotencyKey": "Idempotency-Key",
@@ -89,24 +89,24 @@ func newHTTPContract() HTTPContract {
 		"requestId":      "Liapoldus-Request-ID",
 		"surfaceDigest":  "Liapoldus-Surface-Digest",
 	}
-	contract.Plugin.AdminSurface.MediaType = "application/json"
-	contract.Plugin.AdminSurface.MaximumBytes = 262144
-	contract.Plugin.AdminSurface.Required = nil
-	contract.Plugin.AdminSurface.DigestAlgorithm = "SHA-256"
-	contract.Plugin.AdminAction.MediaType = "application/json"
-	contract.Plugin.AdminAction.MaximumRequestBytes = 1048576
-	contract.Plugin.AdminAction.MaximumResponseBytes = 1048576
-	contract.Plugin.AdminAction.MaximumPageIDBytes = 128
-	contract.Plugin.AdminAction.MaximumActionIDBytes = 128
-	contract.Plugin.AdminAction.PathSegmentPattern = "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$"
-	contract.Plugin.AdminAction.ResponseStatus.Minimum = 200
-	contract.Plugin.AdminAction.ResponseStatus.Maximum = 599
-	contract.Plugin.AdminAction.DeadlineSeconds = 30
-	contract.Plugin.AdminAction.InvocationContext.MaximumBytes = 8192
-	contract.Plugin.AdminAction.InvocationContext.UnknownHeaderPrefix = "Liapoldus-"
-	contract.Plugin.AdminAction.InvocationContext.Required = []string{"callerId", "instanceId", "pageId", "actionId", "surfaceDigest", "requestId"}
-	contract.Plugin.AdminAction.InvocationContext.Optional = []string{"idempotencyKey", "ifMatch"}
-	contract.Plugin.AdminAction.InvocationContext.Headers = map[string]string{
+	contract.Service.AdminSurface.MediaType = "application/json"
+	contract.Service.AdminSurface.MaximumBytes = 262144
+	contract.Service.AdminSurface.Required = nil
+	contract.Service.AdminSurface.DigestAlgorithm = "SHA-256"
+	contract.Service.AdminAction.MediaType = "application/json"
+	contract.Service.AdminAction.MaximumRequestBytes = 1048576
+	contract.Service.AdminAction.MaximumResponseBytes = 1048576
+	contract.Service.AdminAction.MaximumPageIDBytes = 128
+	contract.Service.AdminAction.MaximumActionIDBytes = 128
+	contract.Service.AdminAction.PathSegmentPattern = "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$"
+	contract.Service.AdminAction.ResponseStatus.Minimum = 200
+	contract.Service.AdminAction.ResponseStatus.Maximum = 599
+	contract.Service.AdminAction.DeadlineSeconds = 30
+	contract.Service.AdminAction.InvocationContext.MaximumBytes = 8192
+	contract.Service.AdminAction.InvocationContext.UnknownHeaderPrefix = "Liapoldus-"
+	contract.Service.AdminAction.InvocationContext.Required = []string{"callerId", "instanceId", "pageId", "actionId", "surfaceDigest", "requestId"}
+	contract.Service.AdminAction.InvocationContext.Optional = []string{"idempotencyKey", "ifMatch"}
+	contract.Service.AdminAction.InvocationContext.Headers = map[string]string{
 		"actionId":       "Liapoldus-Action",
 		"callerId":       "Liapoldus-Caller",
 		"idempotencyKey": "Idempotency-Key",
@@ -117,7 +117,7 @@ func newHTTPContract() HTTPContract {
 		"surfaceDigest":  "Liapoldus-Surface-Digest",
 	}
 	contract.Core.ConfigPull.Method = "GET"
-	contract.Core.ConfigPull.PathTemplate = "/internal/v1/plugin-config/{generation}"
+	contract.Core.ConfigPull.PathTemplate = "/internal/v1/service-config/{generation}"
 	contract.Core.ConfigPull.ResponseMediaType = "application/json"
 	contract.Core.ConfigPull.MaximumBytes = 262144
 	contract.Core.ConfigPull.RequestMediaType = "application/json"
@@ -129,14 +129,14 @@ func newHTTPContract() HTTPContract {
 		"sha256":          "Liapoldus-SHA256",
 	}
 	contract.Core.SecretGrant.Issue.Method = "POST"
-	contract.Core.SecretGrant.Issue.PathTemplate = "/internal/v1/plugin-secret-grants"
+	contract.Core.SecretGrant.Issue.PathTemplate = "/internal/v1/service-secret-grants"
 	contract.Core.SecretGrant.Issue.RequestMediaType = "application/json"
 	contract.Core.SecretGrant.Issue.ResponseMediaType = "application/json"
 	contract.Core.SecretGrant.Issue.MaximumRequestBytes = 4096
 	contract.Core.SecretGrant.Issue.MaximumResponseBytes = 4096
 	contract.Core.SecretGrant.Issue.Required = []string{"reference", "purpose", "generation"}
 	contract.Core.SecretGrant.Redemption.Method = "POST"
-	contract.Core.SecretGrant.Redemption.PathTemplate = "/internal/v1/plugin-secret-grants/{handle}/redemption"
+	contract.Core.SecretGrant.Redemption.PathTemplate = "/internal/v1/service-secret-grants/{handle}/redemption"
 	contract.Core.SecretGrant.Redemption.RequestMediaType = "application/json"
 	contract.Core.SecretGrant.Redemption.ResponseMediaType = "application/json"
 	contract.Core.SecretGrant.Redemption.MaximumRequestBytes = 4096
@@ -197,16 +197,16 @@ func newHTTPContract() HTTPContract {
 		"staleGeneration":          {Status: 409, Code: "generation_stale"},
 		"unknownGeneration":        {Status: 404, Code: "generation_unknown"},
 	}
-	contract.Deadlines.PluginReloadSeconds = 30
-	contract.Deadlines.PluginReadinessSeconds = 5
+	contract.Deadlines.ServiceReloadSeconds = 30
+	contract.Deadlines.ServiceReadinessSeconds = 5
 	contract.Deadlines.CoreConfigPullSeconds = 10
 	contract.Deadlines.CoreSecretGrantSeconds = 10
 	contract.Deadlines.CoreSecretRedemptionSeconds = 10
-	contract.Deadlines.PluginReadHeaderSeconds = 5
-	contract.Deadlines.PluginReadSeconds = 15
-	contract.Deadlines.PluginWriteSeconds = 60
-	contract.Deadlines.PluginIdleSeconds = 120
-	contract.Deadlines.PluginShutdownGraceSeconds = 20
+	contract.Deadlines.ServiceReadHeaderSeconds = 5
+	contract.Deadlines.ServiceReadSeconds = 15
+	contract.Deadlines.ServiceWriteSeconds = 60
+	contract.Deadlines.ServiceIdleSeconds = 120
+	contract.Deadlines.ServiceShutdownGraceSeconds = 20
 	contract.Deadlines.ClientResponseHeaderSeconds = 10
 	contract.Deadlines.ClientDialSeconds = 10
 	contract.Deadlines.ArtifactStreamSeconds = 600
@@ -226,12 +226,12 @@ func newHTTPContract() HTTPContract {
 }
 func newReplicaLifecycleContract() ReplicaLifecycleContract {
 	var contract ReplicaLifecycleContract
-	contract.ContractVersion = "liapoldus.plugin-sdk.replica-lifecycle.v2"
+	contract.ContractVersion = "liapoldus.service-sdk.replica-lifecycle.v2"
 	contract.ProblemMediaType = "application/json"
 	contract.TransportSecurity.TLSRequired = true
 	contract.TransportSecurity.ClientCertificateRequired = true
 	contract.TransportSecurity.CertificateIdentity = "spiffe-uri-template"
-	contract.Identity.URITemplate = "spiffe://liapoldus/plugin/{instanceId}/{replicaId}/{incarnationId}"
+	contract.Identity.URITemplate = "spiffe://liapoldus/service/{instanceId}/{replicaId}/{incarnationId}"
 	contract.Identity.CommonNameUsed = false
 	contract.Lease.TTLSeconds = 30
 	contract.Lease.RenewIntervalSeconds = 10
@@ -241,9 +241,9 @@ func newReplicaLifecycleContract() ReplicaLifecycleContract {
 	contract.Limits.MaximumPeerEndpoints = 4
 	contract.Limits.MaximumContractsPerList = 64
 	contract.Endpoints = map[string]ReplicaLifecycleEndpoint{
-		"deregister": {Method: "POST", Path: "/internal/v2/plugin-replicas/deregister"},
-		"register":   {Method: "POST", Path: "/internal/v2/plugin-replicas/register"},
-		"renew":      {Method: "POST", Path: "/internal/v2/plugin-replicas/renew"},
+		"deregister": {Method: "POST", Path: "/internal/v2/service-replicas/deregister"},
+		"register":   {Method: "POST", Path: "/internal/v2/service-replicas/register"},
+		"renew":      {Method: "POST", Path: "/internal/v2/service-replicas/renew"},
 	}
 	contract.Requests = map[string]ReplicaLifecycleDocument{
 		"deregister": {MediaType: "application/json", MaximumBytes: 4096, Required: []string{"contractVersion", "identity"}, Status: 0},
@@ -282,17 +282,17 @@ func newReplicaLifecycleContract() ReplicaLifecycleContract {
 }
 func newPeerDirectoryPollContract() PeerDirectoryPollContract {
 	var contract PeerDirectoryPollContract
-	contract.ContractVersion = "liapoldus.plugin-sdk.peer-directory-poll.v1"
+	contract.ContractVersion = "liapoldus.service-sdk.peer-directory-poll.v1"
 	contract.ProblemMediaType = "application/json"
 	contract.DirectoryMediaType = "application/json"
 	contract.TransportSecurity.TLSRequired = true
 	contract.TransportSecurity.ClientCertificateRequired = true
 	contract.TransportSecurity.CertificateIdentity = "spiffe-uri-template"
 	contract.IdentityBinding = "authenticated-client-certificate-uri-san"
-	contract.Identity.URITemplate = "spiffe://liapoldus/plugin/{instanceId}/{replicaId}/{incarnationId}"
+	contract.Identity.URITemplate = "spiffe://liapoldus/service/{instanceId}/{replicaId}/{incarnationId}"
 	contract.Identity.CommonNameUsed = false
 	contract.Endpoint.Method = "GET"
-	contract.Endpoint.Path = "/internal/v2/plugin-peer-directory"
+	contract.Endpoint.Path = "/internal/v2/service-peer-directory"
 	contract.Headers.Request = []string{"accept:application/json", "if-none-match:strong-generation-tag"}
 	contract.Headers.Response = []string{"etag:strong-generation-tag", "cache-control:no-store"}
 	contract.Poll.InitialRequest = "immediate-current-directory"
@@ -313,7 +313,7 @@ func newPeerDirectoryPollContract() PeerDirectoryPollContract {
 	contract.Responses.Directory.Status = 200
 	contract.Responses.Directory.MediaType = "application/json"
 	contract.Responses.Directory.MaximumBytes = 1048576
-	contract.Responses.Directory.Schema = "https://liapoldus.github.io/spec/plugin-sdk/v2/peer-directory.schema.json"
+	contract.Responses.Directory.Schema = "https://liapoldus.github.io/spec/service-sdk/v2/peer-directory.schema.json"
 	contract.Responses.Directory.ETagMatches = "quoted-directory-generation"
 	contract.Responses.Directory.CallerMustMatchAuthenticatedIdentity = true
 	contract.Responses.Unchanged.Status = 304

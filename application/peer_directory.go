@@ -6,7 +6,7 @@ import (
 	"encoding/binary"
 	"sort"
 
-	"github.com/Liapoldus/plugin-sdk/v2/domain/models"
+	"github.com/Liapoldus/service-sdk/v2/domain/models"
 )
 
 // ResolvePeer chooses one target from exactly one declared directory link. It
