@@ -31,6 +31,7 @@ const (
 	serviceRouteIdentity       = "identity"
 	serviceRouteManifest       = "manifest"
 	serviceRouteConfigSchema   = "configSchema"
+	serviceRouteConfigValidate = "configValidate"
 	serviceRouteHealth         = "health"
 	serviceRouteReady          = "ready"
 	serviceRouteReload         = "reload"
@@ -52,6 +53,7 @@ var controlServiceRouteNames = [...]string{
 	serviceRouteIdentity,
 	serviceRouteManifest,
 	serviceRouteConfigSchema,
+	serviceRouteConfigValidate,
 	serviceRouteHealth,
 	serviceRouteReady,
 	serviceRouteReload,

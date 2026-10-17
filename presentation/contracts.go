@@ -109,16 +109,17 @@ type Contracts struct {
 	// published verbatim in the identity registration document.
 	ContractVersion string
 
-	IdentityEndpoint       Endpoint
-	ManifestEndpoint       Endpoint
-	ConfigSchemaEndpoint   Endpoint
-	HealthEndpoint         Endpoint
-	ReadyEndpoint          Endpoint
-	ReloadEndpoint         Endpoint
-	ArtifactStreamEndpoint Endpoint
-	AdminSurfaceEndpoint   Endpoint
-	AdminActionEndpoint    Endpoint
-	MetricsEndpoint        Endpoint
+	IdentityEndpoint         Endpoint
+	ManifestEndpoint         Endpoint
+	ConfigSchemaEndpoint     Endpoint
+	ConfigValidationEndpoint Endpoint
+	HealthEndpoint           Endpoint
+	ReadyEndpoint            Endpoint
+	ReloadEndpoint           Endpoint
+	ArtifactStreamEndpoint   Endpoint
+	AdminSurfaceEndpoint     Endpoint
+	AdminActionEndpoint      Endpoint
+	MetricsEndpoint          Endpoint
 
 	HealthStatus int
 	HealthBody   map[string]string
@@ -165,6 +166,7 @@ func (contracts Contracts) registeredEndpoints() []Endpoint {
 		contracts.IdentityEndpoint,
 		contracts.ManifestEndpoint,
 		contracts.ConfigSchemaEndpoint,
+		contracts.ConfigValidationEndpoint,
 		contracts.HealthEndpoint,
 		contracts.ReadyEndpoint,
 		contracts.ReloadEndpoint,

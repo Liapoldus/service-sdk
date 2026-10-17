@@ -19,6 +19,7 @@
     "identity",
     "manifest",
     "configSchema",
+    "configValidate",
     "reload",
     "artifactStream",
     "adminSurface",

@@ -71,6 +71,10 @@
         "method": "GET",
         "path": "/_liapoldus/v1/config-schema"
       },
+      "configValidate": {
+        "method": "POST",
+        "path": "/_liapoldus/v1/config-validate"
+      },
       "health": {
         "method": "GET",
         "path": "/healthz"

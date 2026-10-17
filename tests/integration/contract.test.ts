@@ -44,7 +44,11 @@ describe("the versioned HTTP contract asset", () => {
 
     expect(new Set(paths).size).toBe(paths.length);
     expect(new Set(pairs).size).toBe(pairs.length);
-    expect(writes, "the service publishes lifecycle, artifact, and admin action write paths").toHaveLength(3);
+    expect(writes, "the service publishes lifecycle, artifact, configuration validation, and admin action write paths").toHaveLength(4);
+    expect(endpoint("configValidate")).toEqual({
+      method: "POST",
+      path: "/_liapoldus/v1/config-validate",
+    });
     for (const [index, name] of endpointNames.entries()) {
       expect(pairs[index], `method of ${name}`).toMatch(
         new RegExp(`^${httpMethods.join("|")} /`),

@@ -216,6 +216,7 @@ func (set *HandlerSet) routes() http.Handler {
 	serve(set.contracts.IdentityEndpoint, set.handleIdentity)
 	serve(set.contracts.ManifestEndpoint, set.handleManifest)
 	serve(set.contracts.ConfigSchemaEndpoint, set.handleConfigurationSchema)
+	serve(set.contracts.ConfigValidationEndpoint, set.handleConfigurationValidation)
 	serve(set.contracts.HealthEndpoint, set.handleHealth)
 	serve(set.contracts.ReadyEndpoint, set.handleReady)
 	serve(set.contracts.ReloadEndpoint, set.handleReload)

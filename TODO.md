@@ -513,3 +513,8 @@ Linux VM runtime проверен в OrbStack; in-process adapter теперь �
 Go conformance для source/lifecycle semantics. Production-ready статус всей
 v3 экосистемы всё ещё требует общего REST/in-process corpus, Core host-process
 smoke и hosted release evidence.
+
+## Service-owned config preflight — 2026-10-17
+
+- Added the bounded authenticated SDK configuration-validation endpoint and typed client method. It accepts an opaque JSON candidate, validates without applying/publishing a generation or redeeming active secret grants, and returns a safe refusal outcome. Core uses it alongside the live schema.
+- `make check` passed with 230 tests and generated-contract/type/lint/build checks after the change. Owner documentation describes the validation path. Commit/push and downstream Core/Studio source pin updates remain pending.

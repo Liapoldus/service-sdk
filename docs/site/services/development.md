@@ -16,6 +16,21 @@
 format и transport profiles — `wool`. Общие contracts не копируются
 в service repos.
 
+## Проверка кандидата без активации
+
+Metadata provider реализует `presentation.ConfigurationValidator`:
+`ValidateConfiguration(context.Context, []byte) error`. Callback проверяет
+продуктовую семантику точных JSON-байтов и не изменяет активную конфигурацию,
+generation или readiness. SDK публикует этот вызов на защищённом mTLS
+`POST /_liapoldus/v1/config-validate`: успешная проверка возвращает `204`,
+отказ — безопасную ошибку без текста внутренней причины сервиса. Необъявленный
+validator отклоняет запрос. Body ограничен SDK; некорректный JSON, повторяющиеся
+ключи и неверный Content-Type отклоняются до callback.
+
+Core вызывает проверку кандидатов до публикации новой generation. Этот вызов
+не выполняет Reload, не выдаёт candidate secret grants и не резервирует ресурсы
+сервиса. Активация по-прежнему выполняется через Reload и точный config pull.
+
 TLS/mTLS — ответственность используемой библиотеки, не самого service:
 Service SDK защищает Core↔service REST, а `wool` — peer-соединения.
 Сервис передаёт каждой библиотеке её security configuration/credentials через

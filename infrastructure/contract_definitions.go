@@ -36,6 +36,7 @@ func newHTTPContract() HTTPContract {
 		"adminSurface":   {Method: "GET", Path: "/_liapoldus/v1/admin-surface"},
 		"artifactStream": {Method: "POST", Path: "/_liapoldus/v1/artifact-stream"},
 		"configSchema":   {Method: "GET", Path: "/_liapoldus/v1/config-schema"},
+		"configValidate": {Method: "POST", Path: "/_liapoldus/v1/config-validate"},
 		"health":         {Method: "GET", Path: "/healthz"},
 		"identity":       {Method: "GET", Path: "/_liapoldus/v1/identity"},
 		"manifest":       {Method: "GET", Path: "/_liapoldus/v1/manifest"},
@@ -341,7 +342,7 @@ func newLoopbackPlaintextProfile() LoopbackPlaintextProfile {
 	contract.ExposedEndpoint.EndpointKey = "health"
 	contract.NotFoundProblemKey = "notFound"
 	contract.ProblemResponseField = "code"
-	contract.ExcludedEndpointKeys = []string{"ready", "identity", "manifest", "configSchema", "reload", "artifactStream", "adminSurface", "adminAction", "metrics"}
+	contract.ExcludedEndpointKeys = []string{"ready", "identity", "manifest", "configSchema", "configValidate", "reload", "artifactStream", "adminSurface", "adminAction", "metrics"}
 	contract.CoreEndpointsAlwaysRequireMutualTLS = []string{"configPull", "secretGrant.issue", "secretGrant.redemption"}
 	return contract
 }
