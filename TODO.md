@@ -1,5 +1,24 @@
 # TODO — Service SDK v2
 
+## Opaque service-secret picker metadata — 2026-10-17
+
+- The declarative manifest now accepts an allowlisted `secretPurposes` catalog
+  and `configurationUI` fields with `widget: secret`. Such a field must point
+  to a schema string marked `x-liapoldus-secret-reference` with the exact
+  `ssr:v1` opaque-ID pattern, carries no default/example, and names a purpose
+  declared by that service. Purpose IDs are bounded, unique and serialized in
+  sorted order. No secret bytes or vault locator enter the manifest.
+- Docs and adversarial tests cover the new metadata; missing/duplicate/invalid
+  purposes, plain strings, loose patterns, write-only fields and absent field
+  purpose fail closed. `GOTOOLCHAIN=go1.26.0` plus bundled Node
+  `GOWORK=off make check` passes (Go lint, TS lint/typecheck, generated contract
+  parity, 19 Vitest files / 230 tests, build and vet).
+- SDK metadata is declarative only: Core still authorizes scoped grants and
+  references, CLI owns the vault and local staging, and Studio owns safe input
+  and reference selection. A field is usable only when those owner boundaries
+  and the service runtime are integrated; the SDK does not expose values or
+  render a picker.
+
 > Исторический отчёт: датированные проверки и исходные API names ниже сохранены
 > без переписывания. После breaking nomenclature migration активный модуль —
 > `github.com/Liapoldus/service-sdk/v2`, runtime entities — Services, peer library —

@@ -157,6 +157,67 @@ func TestConfigurationUIRejectsSensitiveNamesAndAnnotationsAcrossComposition(t *
 	}
 }
 
+func TestConfigurationUISecretReferenceRequiresOpaqueSchemaAndDeclaredPurpose(t *testing.T) {
+	schema := []byte(`{"type":"object","properties":{"opaqueRef":{"type":"string","pattern":"^ssr:v1:[a-f0-9]{32}$","x-liapoldus-secret-reference":true}}}`)
+	var ui ConfigurationUIDescriptor
+	if err := json.Unmarshal([]byte(`{"version":"service-configuration-ui/v1","groups":[{"id":"access","title":{"ru":"Доступ","en":"Access"},"fields":[{"path":"/opaqueRef","label":{"ru":"Ссылка","en":"Reference"},"widget":"secret","secretPurpose":"server.http.proof"}]}]}`), &ui); err != nil {
+		t.Fatalf("decode secret reference descriptor: %v", err)
+	}
+	if err := ValidateConfigurationUI(&ui, schema); err != nil {
+		t.Fatalf("opaque secret reference field rejected: %v", err)
+	}
+	manifest := ManifestDescriptor{
+		ID: "server", Version: "1.0.0", SecretPurposes: []string{"server.http.proof"}, ConfigurationUI: &ui,
+	}
+	if _, err := CanonicalManifest(manifest); err != nil {
+		t.Fatalf("manifest with declared secret purpose rejected: %v", err)
+	}
+	manifest.SecretPurposes = []string{"server.tls.certificate", "server.http.proof"}
+	canonical, err := CanonicalManifest(manifest)
+	if err != nil {
+		t.Fatalf("manifest with multiple secret purposes rejected: %v", err)
+	}
+	if !strings.Contains(string(canonical), `"secretPurposes":["server.http.proof","server.tls.certificate"]`) {
+		t.Fatalf("secret purposes are not serialized deterministically: %s", canonical)
+	}
+
+	for name, mutate := range map[string]func(*ManifestDescriptor){
+		"undeclared purpose": func(value *ManifestDescriptor) { value.SecretPurposes = nil },
+		"duplicate purpose": func(value *ManifestDescriptor) {
+			value.SecretPurposes = []string{"server.http.proof", "server.http.proof"}
+		},
+		"invalid purpose": func(value *ManifestDescriptor) { value.SecretPurposes = []string{"server.http..bearer"} },
+	} {
+		t.Run(name, func(t *testing.T) {
+			candidate := manifest
+			candidate.SecretPurposes = append([]string(nil), manifest.SecretPurposes...)
+			mutate(&candidate)
+			if _, err := CanonicalManifest(candidate); err == nil {
+				t.Fatal("unsafe secret-purpose metadata was accepted")
+			}
+		})
+	}
+
+	for name, candidateSchema := range map[string]string{
+		"missing opaque marker":   `{"type":"object","properties":{"opaqueRef":{"type":"string","pattern":"^ssr:v1:[a-f0-9]{32}$"}}}`,
+		"wrong reference pattern": `{"type":"object","properties":{"opaqueRef":{"type":"string","pattern":".*","x-liapoldus-secret-reference":true}}}`,
+		"sensitive value marker":  `{"type":"object","properties":{"opaqueRef":{"type":"string","pattern":"^ssr:v1:[a-f0-9]{32}$","x-liapoldus-secret-reference":true,"writeOnly":true}}}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := ValidateConfigurationUI(&ui, []byte(candidateSchema)); err == nil {
+				t.Fatal("secret widget accepted a schema that can contain secret values")
+			}
+		})
+	}
+	var withoutPurpose ConfigurationUIDescriptor
+	if err := json.Unmarshal([]byte(`{"version":"service-configuration-ui/v1","groups":[{"id":"access","title":{"ru":"Доступ","en":"Access"},"fields":[{"path":"/opaqueRef","label":{"ru":"Ссылка","en":"Reference"},"widget":"secret"}]}]}`), &withoutPurpose); err != nil {
+		t.Fatalf("decode descriptor without purpose: %v", err)
+	}
+	if err := ValidateConfigurationUI(&withoutPurpose, schema); err == nil {
+		t.Fatal("secret widget without a purpose was accepted")
+	}
+}
+
 func TestConfigurationUIManifestMatchesStableContractFixture(t *testing.T) {
 	descriptor := ManifestDescriptor{
 		ID: "echo", Version: "1.2.3",

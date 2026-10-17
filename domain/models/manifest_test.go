@@ -164,10 +164,13 @@ func TestManifestConfigurationUIResourceMustResolveDeclaredCatalog(t *testing.T)
 	ui := &ConfigurationUIDescriptor{Version: ConfigurationUIVersion, Groups: []ConfigurationUIGroup{{
 		ID: "routes", Title: ConfigurationUIText{RU: "Маршруты", EN: "Routes"}, Fields: []ConfigurationUIField{{
 			Path: "/siteId", Label: ConfigurationUIText{RU: "Сайт", EN: "Site"}, Widget: "resource", ResourceKind: "site", ResourceID: "sites",
+		}, {
+			Path: "/releaseId", Label: ConfigurationUIText{RU: "Релиз", EN: "Release"}, Widget: "resource", ResourceKind: "site-release", ResourceID: "site-releases",
 		}},
 	}}}
 	resource := ResourceDescriptor{ID: "sites", Kind: "site", Provider: ResourceProviderServiceAdmin, PageID: "sites", QueryResource: "sites", ValuePointer: "/siteId", LabelPointer: "/siteId"}
-	if _, err := CanonicalManifest(ManifestDescriptor{ID: "server", Version: "1.0.0", ConfigurationUI: ui, Resources: []ResourceDescriptor{resource}}); err != nil {
+	releases := ResourceDescriptor{ID: "site-releases", Kind: "site-release", Provider: ResourceProviderServiceAdmin, PageID: "sites", QueryResource: "releases", ValuePointer: "/revisionId", LabelPointer: "/revisionId"}
+	if _, err := CanonicalManifest(ManifestDescriptor{ID: "server", Version: "1.0.0", ConfigurationUI: ui, Resources: []ResourceDescriptor{resource, releases}}); err != nil {
 		t.Fatalf("matching resource field and catalog were rejected: %v", err)
 	}
 	if _, err := CanonicalManifest(ManifestDescriptor{ID: "server", Version: "1.0.0", ConfigurationUI: ui}); err == nil {

@@ -48,6 +48,7 @@ type ManifestDescriptor struct {
 	Capabilities    []CapabilityDescriptor          `json:"capabilities,omitempty"`
 	PeerContracts   []PeerContractDescriptor        `json:"peerContracts,omitempty"`
 	Resources       []ResourceDescriptor            `json:"resources,omitempty"`
+	SecretPurposes  []string                        `json:"secretPurposes,omitempty"`
 	ConfigurationUI *ConfigurationUIDescriptor      `json:"configurationUI,omitempty"`
 	EditorButtons   *ServiceEditorButtonsDescriptor `json:"editorButtons,omitempty"`
 	Runtime         RuntimeDescriptor               `json:"runtime"`
@@ -121,6 +122,7 @@ func PrepareManifest(descriptor ManifestDescriptor) (ManifestDescriptor, error) 
 	prepared.Capabilities = append([]CapabilityDescriptor(nil), descriptor.Capabilities...)
 	prepared.PeerContracts = append([]PeerContractDescriptor(nil), descriptor.PeerContracts...)
 	prepared.Resources = append([]ResourceDescriptor(nil), descriptor.Resources...)
+	prepared.SecretPurposes = append([]string(nil), descriptor.SecretPurposes...)
 	if descriptor.EditorButtons != nil {
 		buttons := *descriptor.EditorButtons
 		buttons.Buttons = append([]ServiceEditorButton(nil), descriptor.EditorButtons.Buttons...)
@@ -177,6 +179,7 @@ func PrepareManifest(descriptor ManifestDescriptor) (ManifestDescriptor, error) 
 	sort.Slice(prepared.Capabilities, func(left, right int) bool { return prepared.Capabilities[left].ID < prepared.Capabilities[right].ID })
 	sort.Slice(prepared.PeerContracts, func(left, right int) bool { return prepared.PeerContracts[left].ID < prepared.PeerContracts[right].ID })
 	sort.Slice(prepared.Resources, func(left, right int) bool { return prepared.Resources[left].ID < prepared.Resources[right].ID })
+	sort.Strings(prepared.SecretPurposes)
 	for index := range prepared.PeerContracts {
 		sort.Strings(prepared.PeerContracts[index].Methods)
 	}
@@ -223,6 +226,19 @@ func (descriptor ManifestDescriptor) Validate() error {
 	if len(descriptor.Resources) > resourceCatalogMaximum {
 		return fmt.Errorf("%w: resource catalog exceeds the safety limit", ErrInvalidManifest)
 	}
+	if len(descriptor.SecretPurposes) > 128 {
+		return fmt.Errorf("%w: secret purpose catalog exceeds the safety limit", ErrInvalidManifest)
+	}
+	secretPurposes := make(map[string]struct{}, len(descriptor.SecretPurposes))
+	for _, purpose := range descriptor.SecretPurposes {
+		if !validConfigurationSecretPurpose(purpose) {
+			return fmt.Errorf("%w: service secret purpose is invalid", ErrInvalidManifest)
+		}
+		if _, exists := secretPurposes[purpose]; exists {
+			return fmt.Errorf("%w: duplicate service secret purpose", ErrInvalidManifest)
+		}
+		secretPurposes[purpose] = struct{}{}
+	}
 	resourceIDs := make(map[string]string, len(descriptor.Resources))
 	for _, resource := range descriptor.Resources {
 		if !validManifestIdentifier(resource.ID) || !validResourceKind(resource.Kind) {
@@ -263,6 +279,11 @@ func (descriptor ManifestDescriptor) Validate() error {
 		}
 		for _, group := range descriptor.ConfigurationUI.Groups {
 			for _, field := range group.Fields {
+				if field.Widget == "secret" {
+					if _, declared := secretPurposes[field.SecretPurpose]; !declared {
+						return fmt.Errorf("%w: undeclared service secret purpose", ErrInvalidConfigurationUI)
+					}
+				}
 				if field.Widget == "peer" && !contracts[field.PeerContractID] {
 					return fmt.Errorf("%w: unknown peer contract %q", ErrInvalidConfigurationUI, field.PeerContractID)
 				}
@@ -291,7 +312,7 @@ func ServiceEditorButtonKey(serviceID, key string) string { return serviceID + "
 
 func validResourceKind(value string) bool {
 	switch value {
-	case "file", "certificate", "site", "artifact":
+	case "file", "certificate", "site", "site-release", "artifact":
 		return true
 	default:
 		return false

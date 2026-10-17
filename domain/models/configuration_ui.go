@@ -46,6 +46,7 @@ type ConfigurationUIField struct {
 	Help           *ConfigurationUIText `json:"help,omitempty"`
 	Unit           *ConfigurationUIText `json:"unit,omitempty"`
 	Widget         string               `json:"widget"`
+	SecretPurpose  string               `json:"secretPurpose,omitempty"`
 	ResourceKind   string               `json:"resourceKind,omitempty"`
 	ResourceID     string               `json:"resourceId,omitempty"`
 	PeerContractID string               `json:"peerContractId,omitempty"`
@@ -68,7 +69,7 @@ func ValidateConfigurationUI(descriptor *ConfigurationUIDescriptor, schema []byt
 	}
 	for _, group := range descriptor.Groups {
 		for _, field := range group.Fields {
-			nodes, err := schemaNodes(root, field.Path)
+			nodes, err := schemaNodes(root, field.Path, field.Widget == "secret")
 			if err != nil || len(nodes) == 0 {
 				return fmt.Errorf("%w: unresolved field path %q", ErrInvalidConfigurationUI, field.Path)
 			}
@@ -112,15 +113,19 @@ func validateConfigurationUIDescriptor(descriptor *ConfigurationUIDescriptor) er
 			fieldPaths[field.Path] = struct{}{}
 			switch field.Widget {
 			case "auto", "text", "textarea", "number", "slider", "toggle", "select", "array":
-				if field.ResourceKind != "" || field.ResourceID != "" || field.PeerContractID != "" {
+				if field.SecretPurpose != "" || field.ResourceKind != "" || field.ResourceID != "" || field.PeerContractID != "" {
+					return ErrInvalidConfigurationUI
+				}
+			case "secret":
+				if !validConfigurationSecretPurpose(field.SecretPurpose) || field.ResourceKind != "" || field.ResourceID != "" || field.PeerContractID != "" {
 					return ErrInvalidConfigurationUI
 				}
 			case "resource":
-				if field.PeerContractID != "" || !map[string]bool{"file": true, "certificate": true, "site": true, "artifact": true}[field.ResourceKind] || !validManifestIdentifier(field.ResourceID) {
+				if field.SecretPurpose != "" || field.PeerContractID != "" || !map[string]bool{"file": true, "certificate": true, "site": true, "site-release": true, "artifact": true}[field.ResourceKind] || !validManifestIdentifier(field.ResourceID) {
 					return ErrInvalidConfigurationUI
 				}
 			case "peer":
-				if field.ResourceKind != "" || field.ResourceID != "" || !validManifestIdentifier(field.PeerContractID) {
+				if field.SecretPurpose != "" || field.ResourceKind != "" || field.ResourceID != "" || !validManifestIdentifier(field.PeerContractID) {
 					return ErrInvalidConfigurationUI
 				}
 			default:
@@ -129,6 +134,31 @@ func validateConfigurationUIDescriptor(descriptor *ConfigurationUIDescriptor) er
 		}
 	}
 	return nil
+}
+
+func validConfigurationSecretPurpose(value string) bool {
+	if value == "" || len(value) > 192 || strings.TrimSpace(value) != value {
+		return false
+	}
+	parts := strings.Split(value, ".")
+	if len(parts) < 2 || len(parts) > 8 {
+		return false
+	}
+	for _, part := range parts {
+		if part == "" || part[0] < 'a' || part[0] > 'z' {
+			return false
+		}
+		for _, character := range part {
+			switch {
+			case character >= 'a' && character <= 'z':
+			case character >= '0' && character <= '9':
+			case character == '-':
+			default:
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func validLocalizedText(value ConfigurationUIText, optional bool) bool {
@@ -211,6 +241,17 @@ func widgetMatchesSchema(field ConfigurationUIField, schema map[string]any) bool
 		// peer bindings need an explicit value-mapping contract; an object schema
 		// must never be populated by guessing property names.
 		return kind == "string"
+	case "secret":
+		pattern, patternOK := schema["pattern"].(string)
+		if !patternOK || pattern != `^ssr:v1:[a-f0-9]{32}$` || schema["x-liapoldus-secret-reference"] != true {
+			return false
+		}
+		for _, key := range []string{"default", "examples", "enum", "const"} {
+			if _, exists := schema[key]; exists {
+				return false
+			}
+		}
+		return kind == "string"
 	default:
 		return false
 	}
@@ -251,14 +292,16 @@ func sensitiveConfigurationFieldName(name string) bool {
 	return false
 }
 
-func schemaNodes(root map[string]any, path string) ([]map[string]any, error) {
+func schemaNodes(root map[string]any, path string, allowSecretReference bool) ([]map[string]any, error) {
 	nodes := []map[string]any{root}
 	if sensitiveSchemaNode(root) {
 		return nil, ErrInvalidConfigurationUI
 	}
-	for _, encodedSegment := range strings.Split(path[1:], "/") {
+	segments := strings.Split(path[1:], "/")
+	for index, encodedSegment := range segments {
 		segment := strings.ReplaceAll(strings.ReplaceAll(encodedSegment, "~1", "/"), "~0", "~")
-		if segment != "*" && sensitiveConfigurationFieldName(segment) {
+		secretLeaf := allowSecretReference && index == len(segments)-1
+		if segment != "*" && sensitiveConfigurationFieldName(segment) && !secretLeaf {
 			return nil, ErrInvalidConfigurationUI
 		}
 		next := make([]map[string]any, 0)

@@ -71,9 +71,13 @@ Manifest может содержать необязательный `configurati
 `service-configuration-ui/v1`. SDK-модель ограничивает descriptor локализованными
 RU/EN группами, JSON Pointer путями к полям, порядком и allowlisted hints:
 `auto`, `text`, `textarea`, `number`, `slider`, `toggle`, `select`, `array`,
-`resource`, `peer`. Ресурсный hint обязан назвать тип логической ссылки
+`resource`, `peer`, `secret`. Ресурсный hint обязан назвать тип логической ссылки
 (`file`, `certificate`, `site` или `artifact`); peer hint ссылается на объявленный
-opaque peer contract. Исполняемого JS/HTML, callbacks расширений Studio
+opaque peer contract. Secret hint разрешён только для bounded string field,
+который schema явно помечает как opaque `ssr:v1` reference; он обязан назвать
+purpose из объявленного сервисом списка `secretPurposes`. Значения секретов,
+произвольный ввод и storage locators в manifest не передаются. Исполняемого
+JS/HTML, callbacks расширений Studio
 (StudioPlugins), remote schemas,
 credentials и абсолютных путей в descriptor нет.
 
@@ -87,8 +91,9 @@ Object-valued peer bindings пока не входят в этот versioned con
 отклоняет их до появления явного безопасного mapping descriptor.
 
 Manifest дополнительно может объявлять bounded `resources` catalog. Каждый
-resource имеет стабильный ID и один из видов `file`, `certificate`, `site` или
-`artifact`. Provider `project` обращается к безопасному Project catalog через
+resource имеет стабильный ID и один из видов `file`, `certificate`, `site`,
+`site-release` или `artifact`. `site-release` обозначает неизменяемую ревизию
+опубликованного сайта, выбранную через service-owned каталог. Provider `project` обращается к безопасному Project catalog через
 Studio host; provider `service-admin` задаёт только page/resource IDs и JSON
 Pointers value/label, а не URL или исполняемый запрос. Поле
 `configurationUI` с `widget: resource` связывает `resourceKind` и `resourceId`
@@ -106,7 +111,9 @@ Catalog не содержит значений сертификатов, клю�
 
 `presentation.NewManifestProvider` проверяет descriptor против service-owned
 JSON Schema: локальные field paths и `$ref` должны разрешаться, тип widget должен
-соответствовать schema, slider требует `minimum`/`maximum`, а
+соответствовать schema, slider требует `minimum`/`maximum`, secret widget
+принимает только точный формат opaque reference без schema default/example,
+purpose должен быть объявлен в `secretPurposes`, а
 read-only/write-only/password/sensitive fields нельзя пометить редактируемыми.
 Неизвестная версия, widget или внешний `$ref` закрывают metadata fail-closed.
 Schema остаётся единственным источником типов, bounds, enum и validation;
