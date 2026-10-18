@@ -1,5 +1,19 @@
 # TODO — Service SDK v2
 
+## Local runtime vs secret-grant acceptance — 2026-10-19
+
+- The local Core, Echo 1.2.2 and Server 1.1.11 now start and register through
+  `runtime start --revision WORKING_TREE`; typed status reports both service
+  replicas ready with desired/applied generation 96. The existing Server
+  `/echo?text=local-smoke` path returns HTTP 200.
+- This confirms local SDK registration/readiness and ordinary Server dispatch,
+  not live scoped secret issue/redemption. Project currently has no secret
+  reference, and the previous temporary local references are revoked. The
+  host-owned secret form is awaiting user entry; no grant or secret value has
+  reached a service in this checkpoint. The 18/18 `tests/integration/secrets`
+  runtime suite remains SDK fixture evidence, not the missing Core→replica
+  production-path proof.
+
 ## Fresh scoped secret lifecycle verification — 2026-10-18
 
 - Re-ran `PATH=/Users/docup/.cache/codex-runtimes/codex-primary-runtime/
