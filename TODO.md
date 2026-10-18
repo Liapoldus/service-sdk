@@ -8,7 +8,7 @@
   exercises the SDK runtime process, real SDK HTTP surface and secret-broker
   client behavior for readiness, expiry, replay, bounded grants, safe
   errors/events and recovery after a refused grant.
-- The broader SDK `make check` remains recorded in the manifest metadata checkpoint below; runtime/Docker acceptance with the current local Core and Server binaries remains a separate live gate.
+- Re-ran `PATH=/Users/docup/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin:$PATH GOTOOLCHAIN=go1.26.0 GOWORK=off GOFLAGS=-p=1 make check`: 19 Vitest files / 230 tests pass; contract export check, Go/TS lint, typecheck, build and vet pass. This is source evidence only; runtime/Docker acceptance with the current local Core and Server binaries remains a separate live gate.
 
 ## Opaque service-secret picker metadata — 2026-10-17
 
