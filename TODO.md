@@ -16,6 +16,13 @@
   contain a temporary auth route and the typed Core catalog contains two active
   opaque synthetic references, but neither has been applied to Server. No
   secret value is exposed to the SDK manifest, Project, logs or this checkpoint.
+- The latest authorized local apply returned a generic Core 409 while Server
+  logs exposed the bounded outcome `grantDenied` at
+  `2026-10-18T23:17:52.423698534Z`. The failure reached the SDK secret-grant
+  path, but no candidate secret value was delivered and the active generation
+  stayed unchanged. The Core/Server candidate-generation changes are still not
+  installed; live grant acceptance, authenticated request, ACK, rotation and
+  cleanup remain unverified.
 
 ## Local runtime vs secret-grant acceptance — superseded checkpoint — 2026-10-19
 
