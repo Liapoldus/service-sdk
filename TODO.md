@@ -9,10 +9,15 @@
 - This confirms local SDK registration/readiness and ordinary Server dispatch,
   not live scoped secret issue/redemption. Project currently has no secret
   reference, and the previous temporary local references are revoked. The
-  host-owned secret form is awaiting user entry; no grant or secret value has
-  reached a service in this checkpoint. The 18/18 `tests/integration/secrets`
-  runtime suite remains SDK fixture evidence, not the missing Core→replica
-  production-path proof.
+  user reported saving the new test value, but the current Studio secure field
+  is empty and the typed catalog has no new reference. No grant or secret value
+  has reached a service in this checkpoint. The 18/18
+  `tests/integration/secrets` runtime suite remains SDK fixture evidence, not
+  the missing Core→replica live proof.
+- Re-ran `PATH=/Users/docup/.cache/codex-runtimes/codex-primary-runtime/
+  dependencies/node/bin:$PATH GOWORK=off GOFLAGS=-p=1 make check`: 19 Vitest
+  files / 230 tests passed; contract export, Go/TS lint, typecheck, build and
+  vet passed.
 
 ## Fresh scoped secret lifecycle verification — 2026-10-18
 
