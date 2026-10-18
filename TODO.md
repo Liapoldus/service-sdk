@@ -1,5 +1,10 @@
 # TODO — Service SDK v2
 
+## Fresh scoped secret lifecycle verification — 2026-10-18
+
+- `./node_modules/.bin/vitest run integration/secrets.test.ts` passed 18/18. The suite exercises the SDK runtime process, real SDK HTTP surface and secret-broker client behavior for readiness, expiry, replay, bounded grants, safe errors/events and recovery after a refused grant.
+- The broader SDK `make check` remains recorded in the manifest metadata checkpoint below; runtime/Docker acceptance with the current local Core and Server binaries remains a separate live gate.
+
 ## Opaque service-secret picker metadata — 2026-10-17
 
 - The declarative manifest now accepts an allowlisted `secretPurposes` catalog
