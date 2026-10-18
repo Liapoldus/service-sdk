@@ -77,6 +77,12 @@ type Lifecycle interface {
 	Reload(ctx context.Context, request models.Reload) (models.ReloadAcknowledgement, error)
 }
 
+// ConfigurationValidationScope makes the exact staged candidate generation
+// visible to scoped service facilities only while a Core preflight is running.
+type ConfigurationValidationScope interface {
+	ValidateConfigurationGeneration(context.Context, string, func() error) error
+}
+
 // ReadinessProvider reports the generation this replica has actually applied. It
 // takes a context so the handler can bound one read with the contract readiness
 // deadline and a provider can abandon a read it cannot complete.

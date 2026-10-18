@@ -109,17 +109,18 @@ type Contracts struct {
 	// published verbatim in the identity registration document.
 	ContractVersion string
 
-	IdentityEndpoint         Endpoint
-	ManifestEndpoint         Endpoint
-	ConfigSchemaEndpoint     Endpoint
-	ConfigValidationEndpoint Endpoint
-	HealthEndpoint           Endpoint
-	ReadyEndpoint            Endpoint
-	ReloadEndpoint           Endpoint
-	ArtifactStreamEndpoint   Endpoint
-	AdminSurfaceEndpoint     Endpoint
-	AdminActionEndpoint      Endpoint
-	MetricsEndpoint          Endpoint
+	IdentityEndpoint                        Endpoint
+	ManifestEndpoint                        Endpoint
+	ConfigSchemaEndpoint                    Endpoint
+	ConfigValidationEndpoint                Endpoint
+	ConfigurationValidationGenerationHeader string
+	HealthEndpoint                          Endpoint
+	ReadyEndpoint                           Endpoint
+	ReloadEndpoint                          Endpoint
+	ArtifactStreamEndpoint                  Endpoint
+	AdminSurfaceEndpoint                    Endpoint
+	AdminActionEndpoint                     Endpoint
+	MetricsEndpoint                         Endpoint
 
 	HealthStatus int
 	HealthBody   map[string]string
@@ -233,7 +234,7 @@ func (contracts Contracts) outcomeProblem(outcome models.Outcome) (Problem, bool
 // instead of becoming a wrong status or a missing field on the wire.
 func (contracts Contracts) Validate() error {
 	if contracts.ContractVersion == "" || contracts.ReadinessDeadline <= 0 ||
-		contracts.MaximumMetadataBytes <= 0 {
+		contracts.MaximumMetadataBytes <= 0 || contracts.ConfigurationValidationGenerationHeader == "" {
 		return ErrInvalidContracts
 	}
 	seen := make(map[string]struct{}, 10)

@@ -737,6 +737,10 @@ func (client *ServiceClient) documentRoute(ctx context.Context, name string, doc
 // rather than as a nil reader of a concrete type, which would still be a
 // non-nil io.Reader.
 func (client *ServiceClient) call(ctx context.Context, name, accept string, maximum int64, kind controlCallKind, body io.Reader) (*http.Response, error) {
+	return client.callWithHeaders(ctx, name, accept, maximum, kind, body, nil)
+}
+
+func (client *ServiceClient) callWithHeaders(ctx context.Context, name, accept string, maximum int64, kind controlCallKind, body io.Reader, headers http.Header) (*http.Response, error) {
 	if maximum <= 0 {
 		return nil, controlUnusable(kind, ErrInvalidControlCall)
 	}
@@ -763,6 +767,11 @@ func (client *ServiceClient) call(ctx context.Context, name, accept string, maxi
 	}
 	if body != nil {
 		request.Header.Set("content-type", client.contract.Service.ReloadRequest.MediaType)
+	}
+	for name, values := range headers {
+		for _, value := range values {
+			request.Header.Add(name, value)
+		}
 	}
 	request.Header.Set("accept", accept)
 	response, err := performControlCall(client.transport, request, kind)

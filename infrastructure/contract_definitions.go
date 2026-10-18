@@ -44,6 +44,7 @@ func newHTTPContract() HTTPContract {
 		"ready":          {Method: "GET", Path: "/_liapoldus/v1/ready"},
 		"reload":         {Method: "POST", Path: "/_liapoldus/v1/reload"},
 	}
+	contract.Service.ConfigurationValidationGenerationHeader = "Liapoldus-Configuration-Generation"
 	contract.Service.ReloadRequest.MediaType = "application/json"
 	contract.Service.ReloadRequest.MaximumBytes = 4096
 	contract.Service.ReloadRequest.Required = []string{"generation", "sha256", "schemaVersion"}

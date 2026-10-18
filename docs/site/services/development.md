@@ -27,9 +27,13 @@ generation или readiness. SDK публикует этот вызов на з�
 validator отклоняет запрос. Body ограничен SDK; некорректный JSON, повторяющиеся
 ключи и неверный Content-Type отклоняются до callback.
 
-Core вызывает проверку кандидатов до публикации новой generation. Этот вызов
-не выполняет Reload, не выдаёт candidate secret grants и не резервирует ресурсы
-сервиса. Активация по-прежнему выполняется через Reload и точный config pull.
+Core сначала сохраняет точный кандидат в закрытый staging slot, затем передаёт
+его номер в `Liapoldus-Configuration-Generation`. SDK открывает этот номер
+только в пределах сериализованного callback проверки. Generic facilities,
+например `SecretManager`, могут использовать его для candidate-scoped grant;
+обычная config pull staging не раскрывает. После успеха Core продвигает
+generation и отдельно выполняет Reload с точным config pull. После отказа
+staging удаляется, а активная generation остаётся прежней.
 
 TLS/mTLS — ответственность используемой библиотеки, не самого service:
 Service SDK защищает Core↔service REST, а `wool` — peer-соединения.

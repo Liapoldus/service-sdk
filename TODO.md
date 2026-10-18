@@ -1,6 +1,23 @@
 # TODO — Service SDK v2
 
-## Local runtime vs secret-grant acceptance — 2026-10-19
+## Candidate-generation validation scope — current checkpoint — 2026-10-19
+
+- The SDK contract now names the configuration-generation request header.
+  Core sends the exact staged generation with candidate validation; SDK rejects
+  malformed generation values and scopes SecretManager access to that
+  generation only while the serialized validation callback runs. Afterward,
+  normal grants use the applied generation, and reload/apply remains serialized
+  with validation.
+- Regression tests cover canonical generation parsing, grant-generation
+  visibility only inside preflight, scope cleanup, cancellation, and forwarding
+  through the authenticated SDK contract. `make check` passes: contract export,
+  Go and TypeScript lint/typecheck, 19 Vitest files / 230 tests, build and vet.
+- Live grant/apply/rotation acceptance remains open. Local Project settings
+  contain a temporary auth route and the typed Core catalog contains two active
+  opaque synthetic references, but neither has been applied to Server. No
+  secret value is exposed to the SDK manifest, Project, logs or this checkpoint.
+
+## Local runtime vs secret-grant acceptance — superseded checkpoint — 2026-10-19
 
 - The local Core, Echo 1.2.2 and Server 1.1.11 now start and register through
   `runtime start --revision WORKING_TREE`; typed status reports both service

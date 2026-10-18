@@ -100,6 +100,7 @@
         "path": "/_liapoldus/v1/reload"
       }
     },
+    "configurationValidationGenerationHeader": "Liapoldus-Configuration-Generation",
     "reloadRequest": {
       "mediaType": "application/json",
       "maximumBytes": 4096,

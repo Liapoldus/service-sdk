@@ -5,6 +5,7 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"strconv"
 
 	"github.com/Liapoldus/service-sdk/v2/domain/models"
 )
@@ -42,7 +43,25 @@ func (set *HandlerSet) handleConfigurationValidation(writer http.ResponseWriter,
 	}
 	ctx, cancel := context.WithTimeout(request.Context(), set.contracts.ReadinessDeadline)
 	defer cancel()
-	if err := validator.ValidateConfiguration(ctx, raw); err != nil || ctx.Err() != nil {
+	generation := request.Header.Get(set.contracts.ConfigurationValidationGenerationHeader)
+	if generation != "" {
+		parsed, parseErr := strconv.ParseInt(generation, 10, 64)
+		if parseErr != nil || parsed < 1 || strconv.FormatInt(parsed, 10) != generation {
+			set.writeOutcomeProblem(writer, models.OutcomeInvalidRequest)
+			return
+		}
+		scope, scoped := set.lifecycle.(ConfigurationValidationScope)
+		if !scoped {
+			set.writeTransportProblem(writer, internalErrorKey)
+			return
+		}
+		err = scope.ValidateConfigurationGeneration(ctx, generation, func() error {
+			return validator.ValidateConfiguration(ctx, raw)
+		})
+	} else {
+		err = validator.ValidateConfiguration(ctx, raw)
+	}
+	if err != nil || ctx.Err() != nil {
 		set.writeOutcomeProblem(writer, models.OutcomeApplyRejected)
 		return
 	}

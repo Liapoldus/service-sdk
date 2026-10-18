@@ -49,6 +49,7 @@ describe("the versioned HTTP contract asset", () => {
       method: "POST",
       path: "/_liapoldus/v1/config-validate",
     });
+    expect(contract.service.configurationValidationGenerationHeader).toBe("Liapoldus-Configuration-Generation");
     for (const [index, name] of endpointNames.entries()) {
       expect(pairs[index], `method of ${name}`).toMatch(
         new RegExp(`^${httpMethods.join("|")} /`),

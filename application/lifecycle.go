@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"strconv"
 	"sync"
 
 	"github.com/Liapoldus/service-sdk/v2/domain/interfaces"
@@ -13,6 +14,7 @@ import (
 // or the lifecycle observer is absent. It names no port, endpoint, address,
 // document or configuration value.
 var ErrMissingLifecycleDependency = errors.New("service lifecycle dependency is required")
+var ErrInvalidValidationGeneration = errors.New("invalid configuration validation generation")
 
 // LifecycleConfiguration carries the injected ports and the per-replica
 // identity of one manually started service process. It is product agnostic: no
@@ -52,11 +54,43 @@ type Lifecycle struct {
 	classifier OutcomeClassifier
 	identity   models.ReplicaIdentity
 
-	applyMu  sync.Mutex
-	stateMu  sync.RWMutex
-	active   *models.Reload
-	pending  string
-	applying *models.Reload
+	applyMu    sync.Mutex
+	stateMu    sync.RWMutex
+	active     *models.Reload
+	pending    string
+	applying   *models.Reload
+	validating string
+}
+
+// ValidateConfigurationGeneration serializes Core preflight with reload/apply
+// and exposes the exact staged generation to SecretManager for the duration of
+// the validator callback. The callback cannot choose an alternate generation.
+func (lifecycle *Lifecycle) ValidateConfigurationGeneration(ctx context.Context, generation string, validate func() error) error {
+	if lifecycle == nil || validate == nil {
+		return ErrMissingLifecycleDependency
+	}
+	number, err := strconv.ParseInt(generation, 10, 64)
+	if err != nil || number < 1 || strconv.FormatInt(number, 10) != generation {
+		return ErrInvalidValidationGeneration
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	lifecycle.applyMu.Lock()
+	defer lifecycle.applyMu.Unlock()
+	lifecycle.stateMu.Lock()
+	lifecycle.validating = generation
+	lifecycle.stateMu.Unlock()
+	defer func() {
+		lifecycle.stateMu.Lock()
+		lifecycle.validating = ""
+		lifecycle.stateMu.Unlock()
+	}()
+	err = validate()
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	return err
 }
 
 // NewLifecycle builds the Reload use case from the injected ports. It fails
@@ -187,6 +221,9 @@ func (lifecycle *Lifecycle) SecretGrantGeneration() (string, bool) {
 	defer lifecycle.stateMu.RUnlock()
 	if lifecycle.applying != nil {
 		return lifecycle.applying.Generation, true
+	}
+	if lifecycle.validating != "" {
+		return lifecycle.validating, true
 	}
 	if lifecycle.active != nil {
 		return lifecycle.active.Generation, true

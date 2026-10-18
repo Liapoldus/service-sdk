@@ -65,17 +65,18 @@ type RegistrationContract struct {
 }
 
 type ServiceContract struct {
-	Responses             ResponseContract       `json:"responses"`
-	Endpoints             map[string]Endpoint    `json:"endpoints"`
-	ReloadRequest         DocumentContract       `json:"reloadRequest"`
-	ReloadAcknowledgement DocumentContract       `json:"reloadAcknowledgement"`
-	Readiness             DocumentContract       `json:"readiness"`
-	Manifest              DocumentContract       `json:"manifest"`
-	ConfigurationSchema   DocumentContract       `json:"configurationSchema"`
-	MaximumMetadataBytes  int64                  `json:"maximumMetadataBytes"`
-	ArtifactStream        ArtifactStreamContract `json:"artifactStream"`
-	AdminSurface          DocumentContract       `json:"adminSurface"`
-	AdminAction           AdminActionContract    `json:"adminAction"`
+	Responses                               ResponseContract       `json:"responses"`
+	Endpoints                               map[string]Endpoint    `json:"endpoints"`
+	ConfigurationValidationGenerationHeader string                 `json:"configurationValidationGenerationHeader"`
+	ReloadRequest                           DocumentContract       `json:"reloadRequest"`
+	ReloadAcknowledgement                   DocumentContract       `json:"reloadAcknowledgement"`
+	Readiness                               DocumentContract       `json:"readiness"`
+	Manifest                                DocumentContract       `json:"manifest"`
+	ConfigurationSchema                     DocumentContract       `json:"configurationSchema"`
+	MaximumMetadataBytes                    int64                  `json:"maximumMetadataBytes"`
+	ArtifactStream                          ArtifactStreamContract `json:"artifactStream"`
+	AdminSurface                            DocumentContract       `json:"adminSurface"`
+	AdminAction                             AdminActionContract    `json:"adminAction"`
 }
 
 type AdminActionContract struct {
@@ -358,6 +359,8 @@ func (contract HTTPContract) validate() error {
 		contract.Service.Manifest.MaximumBytes <= 0,
 		contract.Service.ConfigurationSchema.MaximumBytes <= 0:
 		return fmt.Errorf("%w: document limits", ErrInvalidHTTPContract)
+	case contract.Service.ConfigurationValidationGenerationHeader == "":
+		return fmt.Errorf("%w: configuration validation generation header", ErrInvalidHTTPContract)
 	case contract.Service.AdminSurface.MaximumBytes <= 0 || contract.Service.AdminSurface.DigestAlgorithm == "",
 		contract.Service.AdminAction.MaximumRequestBytes <= 0 || contract.Service.AdminAction.MaximumResponseBytes <= 0,
 		contract.Service.AdminAction.MaximumPageIDBytes <= 0 || contract.Service.AdminAction.MaximumActionIDBytes <= 0,
