@@ -12,17 +12,19 @@
   visibility only inside preflight, scope cleanup, cancellation, and forwarding
   through the authenticated SDK contract. `make check` passes: contract export,
   Go and TypeScript lint/typecheck, 19 Vitest files / 230 tests, build and vet.
-- Live grant/apply/rotation acceptance remains open. Local Project settings
-  contain a temporary auth route and the typed Core catalog contains two active
-  opaque synthetic references, but neither has been applied to Server. No
-  secret value is exposed to the SDK manifest, Project, logs or this checkpoint.
-- The latest authorized local apply returned a generic Core 409 while Server
-  logs exposed the bounded outcome `grantDenied` at
-  `2026-10-18T23:17:52.423698534Z`. The failure reached the SDK secret-grant
-  path, but no candidate secret value was delivered and the active generation
-  stayed unchanged. The Core/Server candidate-generation changes are still not
-  installed; live grant acceptance, authenticated request, ACK, rotation and
-  cleanup remain unverified.
+- A single-replica live acceptance completed on 2026-10-19 through Studio's
+  host-owned secure input, Core's scoped grant path and Server's SDK validation
+  callback. The temporary auth configuration was acknowledged at generation
+  98; valid Bearer returned 200 and missing/invalid credentials returned 401.
+  The route was removed and generation 99 acknowledged. Secret values were
+  never exposed to the SDK manifest, Project, logs or this checkpoint.
+- Current local Project/runtime is restored to Server 1.1.12 at generation 99
+  with only `/echo`; the temporary Server 1.1.13 diagnostic artifact was
+  removed. All synthetic references are revoked (0 active, 7 revoked, no
+  pending registration/rotation). This proves the single-replica applied
+  generation path, not multi-replica timeout/restart recovery or acceptance of
+  the newer Core 43b7acc and Server 1.1.14 candidate digests; those gates remain
+  open.
 
 ## Local runtime vs secret-grant acceptance — superseded checkpoint — 2026-10-19
 
