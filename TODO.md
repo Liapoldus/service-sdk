@@ -603,3 +603,6 @@ smoke и hosted release evidence.
   diagnostic Server 1.1.13; it does not close the cross-repository candidate
   acceptance gate for the newer uninstalled Core and Server binaries. No secret
   value appeared in SDK responses, Project configuration, or captured output.
+- Повторный process-backed SDK suite прошёл: bundled Node выполнял
+  `node ./node_modules/vitest/vitest.mjs run tests/integration/secrets.test.ts
+  --maxWorkers=1` — 18/18 тестов.
