@@ -590,3 +590,16 @@ smoke и hosted release evidence.
 
 - Added the bounded authenticated SDK configuration-validation endpoint and typed client method. It accepts an opaque JSON candidate, validates without applying/publishing a generation or redeeming active secret grants, and returns a safe refusal outcome. Core uses it alongside the live schema.
 - `make check` passed with 230 tests and generated-contract/type/lint/build checks after the change. Owner documentation describes the validation path. Commit/push and downstream Core/Studio source pin updates remain pending.
+
+## Local secret grant and rotation smoke — 2026-10-19
+
+- The existing scoped mTLS grant path was exercised end-to-end in
+  `Server Echo Studio` / `local`: Core published the confirmed auth generation,
+  Server redeemed the service-scoped secret grant through Service SDK, and the
+  replica acknowledged generation 98 before an authenticated HTTP request
+  succeeded. After removing the temporary route, generation 99 was acknowledged
+  before all synthetic references were revoked.
+- This is a local smoke using the already-running Core and temporarily approved
+  diagnostic Server 1.1.13; it does not close the cross-repository candidate
+  acceptance gate for the newer uninstalled Core and Server binaries. No secret
+  value appeared in SDK responses, Project configuration, or captured output.
